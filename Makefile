@@ -25,7 +25,7 @@ eboot.bin: $(TARGET).velf
 %.velf: %.elf
 	vita-elf-create $< $@
 
-%.elf: $(OBJS)
+$(TARGET).elf: $(OBJS)
 	$(CC) $(CFLAGS) $^ $(LIBS) -o $@
 
 clean:
