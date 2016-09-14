@@ -100,17 +100,17 @@ int copyfile(char *src, char *dest) {
         return fddst;
     }
 
-    void *buf = malloc(512);
+    void *buf = malloc(65536);
 
     uint64_t seek = 0;
 
     while (1) {
-        int read = sceIoRead(fdsrc, buf, 512);
+        int read = sceIoRead(fdsrc, buf, 65536);
         if (read == SCE_ERROR_ERRNO_ENODEV) {
             fdsrc = sceIoOpen(src, SCE_O_RDONLY, 0);
             if (fdsrc >= 0) {
                 sceIoLseek(fdsrc, seek, SCE_SEEK_SET);
-                read = sceIoRead(fdsrc, buf, 512);
+                read = sceIoRead(fdsrc, buf, 65536);
             }
         }
 
