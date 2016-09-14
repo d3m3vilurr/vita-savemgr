@@ -313,7 +313,7 @@ int injector_main() {
                     // inject dumper to patch
                     snprintf(buf, 255, "install dumper to %s...", patch);
                     row += 20;
-                    drawText(20, buf, white);
+                    drawText(row, buf, white);
                     row += 20;
                     ret = copydir("ux0:app/SAVEMGR00", patch);
                     if (ret < 0) {
