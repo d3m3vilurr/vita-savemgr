@@ -142,8 +142,6 @@ int injector_main() {
     vita2d_init();
     vita2d_set_clear_color(RGBA8(0x00, 0x00, 0x00, 0xFF));
 
-    debug_font = vita2d_load_default_pgf();
-
     uint32_t white = RGBA8(0xFF, 0xFF, 0xFF, 0xFF);
     uint32_t green = RGBA8(0x00, 0xFF, 0x00, 0xFF);
     uint32_t red = RGBA8(0xFF, 0x00, 0x00, 0xFF);
