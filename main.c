@@ -88,7 +88,7 @@ int launch(const char *titleid) {
     return 0;
 }
 
-int cleanupPrevInject() {
+int cleanupPrevInject(applist *list) {
     int fd = sceIoOpen(TEMP_FILE, SCE_O_RDONLY, 0777);
     if (fd <= 0) {
         return 0;
@@ -99,37 +99,73 @@ int cleanupPrevInject() {
 
     sceIoRemove(TEMP_FILE);
 
-    char patch[256];
+    appinfo *tmp = list->items;
+    while (tmp) {
+        if (strcmp(tmp->title_id, titleid) == 0) {
+            break;
+        }
+        tmp = tmp->next;
+    }
+
+    if (tmp == NULL) {
+        return -1;
+    }
+
+    int ret;
     char backup[256];
-    char eboot[256];
-    snprintf(patch, 256, "ux0:patch/%s", titleid);
-    snprintf(eboot, 256, "ux0:patch/%s/eboot.bin", titleid);
-    if (!is_dumper_eboot(eboot)) {
-        return 0;
-    }
 
-    vita2d_start_drawing();
-    vita2d_clear_screen();
+    if (strcmp(tmp->dev, "ux0") == 0) {
+        vita2d_start_drawing();
+        vita2d_clear_screen();
 
-    drawText(20, "cleanup old data", white);
-    int ret = rmdir(patch);
-    if (ret < 0) {
-        drawText(40, "error", red);
-        goto exit;
-    }
-    drawText(40, "done", white);
-
-    snprintf(backup, 256, "ux0:patch/%s_orig", titleid);
-    if (is_dir(backup)) {
-        drawText(60, "restore patch", white);
-        ret = mvdir(backup, patch);
+        drawText(20, "cleanup old data", white);
+        snprintf(backup, 256, "%s.orig", tmp->eboot);
+        ret = sceIoRemove(tmp->eboot);
+        if (ret < 0) {
+            drawText(40, "error", red);
+            goto exit;
+        }
+        drawText(40, "done", white);
+        drawText(60, "restore eboot", white);
+        ret = sceIoRename(backup, tmp->eboot);
         if (ret < 0) {
             drawText(80, "error", red);
             goto exit;
         }
         drawText(80, "done", white);
+        ret = 0;
+    } else {
+        char patch[256];
+        char eboot[256];
+        snprintf(patch, 256, "ux0:patch/%s", titleid);
+        snprintf(eboot, 256, "ux0:patch/%s/eboot.bin", titleid);
+        if (!is_dumper_eboot(eboot)) {
+            return 0;
+        }
+
+        vita2d_start_drawing();
+        vita2d_clear_screen();
+
+        drawText(20, "cleanup old data", white);
+        ret = rmdir(patch);
+        if (ret < 0) {
+            drawText(40, "error", red);
+            goto exit;
+        }
+        drawText(40, "done", white);
+
+        snprintf(backup, 256, "ux0:patch/%s_orig", titleid);
+        if (is_dir(backup)) {
+            drawText(60, "restore patch", white);
+            ret = mvdir(backup, patch);
+            if (ret < 0) {
+                drawText(80, "error", red);
+                goto exit;
+            }
+            drawText(80, "done", white);
+        }
+        ret = 0;
     }
-    ret = 0;
 exit:
     vita2d_end_drawing();
     vita2d_wait_rendering_done();
@@ -160,16 +196,16 @@ int injector_main() {
         vita2d_swap_buffers();
         sceDisplayWaitVblankStart();
         while (readBtn());
-        return;
+        return -1;
     }
     appinfo *curr = list.items;
 
     int state = INJECTOR_MAIN;
     int row = 20;
     char buf[256];
-    char patch_dir[256], backup_dir[256];
+    char patch[256], backup[256];
 
-    cleanupPrevInject();
+    cleanupPrevInject(&list);
 
     while (1) {
         vita2d_start_drawing();
@@ -193,11 +229,7 @@ int injector_main() {
 
                 btn = readBtn();
 
-                if (btn & SCE_CTRL_CIRCLE) {
-                    sprintf(patch_dir, "ux0:patch/%s", curr->title_id);
-                    sprintf(backup_dir, "ux0:patch/%s_orig", curr->title_id);
-                    state = INJECTOR_TITLE_SELECT;
-                }
+                if (btn & SCE_CTRL_CIRCLE) state = INJECTOR_TITLE_SELECT;
                 else if (btn & SCE_CTRL_CROSS) state = INJECTOR_EXIT;
                 else if (btn & SCE_CTRL_UP && curr->prev) curr = curr->prev;
                 else if (btn & SCE_CTRL_DOWN && curr->next) curr = curr->next;
@@ -221,19 +253,16 @@ int injector_main() {
             case INJECTOR_START_DUMPER:
                 clearScreen();
 
-                snprintf(buf, 255, "%s/eboot.bin", patch_dir);
-                // need to backup patch dir
                 row = 0;
-                int ret;
-                if (is_dir(patch_dir) && !is_dumper_eboot(buf)) {
-                    snprintf(buf, 255, "backup %s to %s ...", patch_dir, backup_dir);
+                if (strcmp(curr->dev, "ux0") == 0) {
+                    // vitamin or digital
+                    snprintf(backup, 256, "%s.orig", curr->eboot);
+                    snprintf(buf, 255, "backup %s to %s", curr->eboot, backup);
                     row += 20;
                     drawText(row, buf, white);
-                    rmdir(backup_dir);
                     row += 20;
-                    ret = mvdir(patch_dir, backup_dir);
-                    if (ret < 0) {
-                        drawText(row,  "error", red);
+                    if (sceIoRename(curr->eboot, backup) < 0) {
+                        drawText(row, "error", red);
 
                         drawText(row + 20, "please press circle", green);
                         while ((readBtn() & SCE_CTRL_CIRCLE) == 0);
@@ -241,23 +270,62 @@ int injector_main() {
                         break;
                     }
                     drawText(row, "done", green);
-                }
 
-                // inject dumper to patch
-                snprintf(buf, 255, "install dumper to %s...", patch_dir);
-                row += 20;
-                drawText(20, buf, white);
-                row += 20;
-                ret = copydir("ux0:app/SAVEMGR00", patch_dir);
-                if (ret < 0) {
-                    drawText(row, "error", red);
-                    // TODO restore patch
-                    drawText(row + 20, "please press circle", green);
-                    while ((readBtn() & SCE_CTRL_CIRCLE) == 0);
-                    state = INJECTOR_TITLE_SELECT;
-                    break;
+                    snprintf(buf, 255, "install dumper to %s", curr->eboot);
+                    row += 20;
+                    drawText(row, buf, white);
+                    row += 20;
+                    if (copyfile("ux0:app/SAVEMGR00/eboot.bin", curr->eboot) < 0) {
+                        drawText(row, "error", red);
+                        // TODO restore eboot
+                        drawText(row + 20, "please press circle", green);
+                        while ((readBtn() & SCE_CTRL_CIRCLE) == 0);
+                        state = INJECTOR_TITLE_SELECT;
+                        break;
+                    }
+                    drawText(row, "done", white);
+                } else {
+                    sprintf(patch, "ux0:patch/%s", curr->title_id);
+                    sprintf(backup, "ux0:patch/%s_orig", curr->title_id);
+
+                    // gro0 cartridge
+                    snprintf(buf, 255, "%s/eboot.bin", patch);
+                    // need to backup patch dir
+                    int ret;
+                    if (is_dir(patch) && !is_dumper_eboot(buf)) {
+                        snprintf(buf, 255, "backup %s to %s ...", patch, backup);
+                        row += 20;
+                        drawText(row, buf, white);
+                        rmdir(backup);
+                        row += 20;
+                        ret = mvdir(patch, backup);
+                        if (ret < 0) {
+                            drawText(row,  "error", red);
+
+                            drawText(row + 20, "please press circle", green);
+                            while ((readBtn() & SCE_CTRL_CIRCLE) == 0);
+                            state = INJECTOR_TITLE_SELECT;
+                            break;
+                        }
+                        drawText(row, "done", green);
+                    }
+
+                    // inject dumper to patch
+                    snprintf(buf, 255, "install dumper to %s...", patch);
+                    row += 20;
+                    drawText(20, buf, white);
+                    row += 20;
+                    ret = copydir("ux0:app/SAVEMGR00", patch);
+                    if (ret < 0) {
+                        drawText(row, "error", red);
+                        // TODO restore patch
+                        drawText(row + 20, "please press circle", green);
+                        while ((readBtn() & SCE_CTRL_CIRCLE) == 0);
+                        state = INJECTOR_TITLE_SELECT;
+                        break;
+                    }
+                    drawText(row, "done", white);
                 }
-                drawText(row, "done", white);
 
                 // backup for next cleanup
                 int fd = sceIoOpen(TEMP_FILE, SCE_O_WRONLY | SCE_O_CREAT,0777);

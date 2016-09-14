@@ -84,7 +84,7 @@ int mvdir(const char *src, const char *dest) {
     return sceIoRename(src, dest);
 }
 
-int copyFile(char *src, char *dest) {
+int copyfile(char *src, char *dest) {
     // The source and destination paths are identical
     if (strcasecmp(src, dest) == 0) {
         return -1;
@@ -162,7 +162,7 @@ int copydir(const char *src, const char *dest) {
 
     SceUID dfd = sceIoDopen(src);
     if (dfd < 0) {
-        return copyFile(src, dest);
+        return copyfile(src, dest);
     }
 
     int ret = sceIoMkdir(dest, 0777);
@@ -193,7 +193,7 @@ int copydir(const char *src, const char *dest) {
             if (SCE_S_ISDIR(dir.d_stat.st_mode)) {
                 ret = copydir(new_src, new_dest);
             } else {
-                ret = copyFile(new_src, new_dest);
+                ret = copyfile(new_src, new_dest);
             }
 
             free(new_dest);

@@ -23,6 +23,7 @@ static int get_applist_callback(void *data, int argc, char **argv, char **cols) 
     strcpy(info->title_id, argv[0]);
     strcpy(info->title, argv[1]);
     strcpy(info->eboot, argv[2]);
+    strcpy(info->dev, argv[3]);
     for (int i = 0; i < 256; i++) {
         if (info->title_id[i] == '\n') {
             info->title_id[i] = ' ';
@@ -33,7 +34,8 @@ static int get_applist_callback(void *data, int argc, char **argv, char **cols) 
 }
 
 int get_applist(applist *list) {
-    char *query = "select a.titleid, b.title, c.ebootbin"
+    char *query = "select a.titleid, b.title, c.ebootbin,"
+                  "       rtrim(substr(c.ebootbin, 0, 5), ':') as dev"
                   "  from (select titleid"
                   "          from tbl_appinfo"
                   "         where key = 566916785"
