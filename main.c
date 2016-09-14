@@ -221,7 +221,7 @@ int injector_main() {
         vita2d_clear_screen();
         switch (state) {
             case INJECTOR_MAIN:
-                drawLoopText(0, "Vita Save Manager 0.1", white);
+                drawLoopText(0, "Vita Save Manager 0.2", white);
                 appinfo *tmp = head;
                 i = 2;
                 while(tmp) {
@@ -386,7 +386,7 @@ int dumper_main() {
 
         switch (state) {
             case DUMPER_MAIN:
-                drawLoopText(0, "Vita Save Dumper 0.1", white);
+                drawLoopText(0, "Vita Save Dumper 0.2", white);
                 drawLoopText(24, "CIRCLE Export", white);
                 drawLoopText(25, "TRIANGLE Import", white);
                 drawLoopText(26, "CROSS Exit", white);
