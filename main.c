@@ -348,7 +348,12 @@ int injector_main() {
                 sceIoWrite(fd, curr->title_id, 16);
                 sceIoClose(fd);
 
-                drawText(7, "start dumper...", green);
+                drawText(8, "DO NOT CLOSE APPLICATION MANUALLY", red);
+
+                // wait 3sec
+                sceKernelDelayThread(3000000);
+
+                drawText(10, "start dumper...", green);
 
                 // TODO store state
                 launch(curr->title_id);
@@ -387,6 +392,8 @@ int dumper_main() {
         switch (state) {
             case DUMPER_MAIN:
                 drawLoopText(0, "Vita Save Dumper 0.2", white);
+                drawLoopText(2, "DO NOT CLOSE APPLICATION MANUALLY", red);
+
                 drawLoopText(24, "CIRCLE Export", white);
                 drawLoopText(25, "TRIANGLE Import", white);
                 drawLoopText(26, "CROSS Exit", white);
@@ -398,23 +405,29 @@ int dumper_main() {
                 break;
             case DUMPER_EXPORT:
                 clearScreen();
-                snprintf(buf, 256, "export to %s ...", path);
-                drawText(0, buf, white);
-                dumpSavedataDir("savedata0:", path);
-                drawText(1, "done", white);
+                drawText(0, "Vita Save Dumper 0.2", white);
+                drawText(2, "DO NOT CLOSE APPLICATION MANUALLY", red);
 
-                drawText(3, "please press circle", green);
+                snprintf(buf, 256, "export to %s ...", path);
+                drawText(4, buf, white);
+                dumpSavedataDir("savedata0:", path);
+                drawText(5, "done", white);
+
+                drawText(7, "please press circle", green);
                 while ((readBtn() & SCE_CTRL_CIRCLE) == 0);
                 state = DUMPER_MAIN;
                 break;
             case DUMPER_IMPORT:
                 clearScreen();
-                snprintf(buf, 256, "import from %s ...", path);
-                drawText(0, buf, white);
-                restoreSavedataDir(path, NULL);
-                drawText(1, "done", white);
+                drawText(0, "Vita Save Dumper 0.2", white);
+                drawText(2, "DO NOT CLOSE APPLICATION MANUALLY", red);
 
-                drawText(3, "please press circle", green);
+                snprintf(buf, 256, "import from %s ...", path);
+                drawText(4, buf, white);
+                restoreSavedataDir(path, NULL);
+                drawText(5, "done", white);
+
+                drawText(7, "please press circle", green);
                 while ((readBtn() & SCE_CTRL_CIRCLE) == 0);
                 state = DUMPER_MAIN;
                 break;
