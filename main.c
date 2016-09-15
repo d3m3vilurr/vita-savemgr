@@ -309,6 +309,15 @@ int injector_main() {
                     sprintf(backup, "ux0:patch/%s_orig", curr->title_id);
 
                     // gro0 cartridge
+                    if (!exists(curr->eboot)) {
+                        drawText(0, "cartridge not inserted", red);
+
+                        drawText(2, "please press circle", green);
+                        while ((readBtn() & SCE_CTRL_CIRCLE) == 0);
+                        state = INJECTOR_TITLE_SELECT;
+                        break;
+                    }
+
                     snprintf(buf, 255, "%s/eboot.bin", patch);
                     // need to backup patch dir
                     int ret;

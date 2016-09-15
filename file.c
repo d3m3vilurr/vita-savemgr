@@ -15,7 +15,10 @@
 
 int exists(const char *path) {
     SceIoStat stat = {0};
-    return sceIoGetstat(path, &stat) != SCE_ERROR_ERRNO_ENOENT;
+    int ret = sceIoGetstat(path, &stat);
+    return ret != SCE_ERROR_ERRNO_ENOENT &&
+        ret != SCE_ERROR_ERRNO_ENOENT &&
+        ret != SCE_ERROR_ERRNO_ENODEV;
 }
 
 int is_dir(const char *path) {
@@ -221,7 +224,7 @@ int is_dumper_eboot(const char *path) {
     sceIoRead(fd, eboot, size);
     sceIoClose(fd);
 
-    int ret = memmem(eboot, size, "savemgr.elf", 11) != NULL;
+    int ret = memmem(eboot, size, "savemgr.elf", 11) != 0;
     free(eboot);
     return ret;
 }
