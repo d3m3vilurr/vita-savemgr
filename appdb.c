@@ -53,9 +53,6 @@ int get_applist(applist *list) {
     if (ret) {
         return -1;
     }
-
-    memset(list, 0, sizeof(applist));
-
     char *errMsg;
     ret = sqlite3_exec(db, query, get_applist_callback, (void *)list, &errMsg);
     if (ret != SQLITE_OK) {
@@ -63,5 +60,9 @@ int get_applist(applist *list) {
         return -2;
     }
     sqlite3_close(db);
+
+    if (list->count <= 0) {
+        return -3;
+    }
     return 0;
 }

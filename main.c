@@ -176,6 +176,34 @@ exit:
     return ret;
 }
 
+void print_game_list(appinfo *head, appinfo *tail, appinfo *curr) {
+    appinfo *tmp = head;
+    int i = 2;
+    char buf[256];
+    while (tmp) {
+        snprintf(buf, 256, "%s: %s", tmp->title_id, tmp->title);
+        drawLoopText(i, buf, curr == tmp ? green : white);
+        if (tmp == tail) {
+            break;
+        }
+        tmp = tmp->next;
+        i++;
+    }
+}
+
+#define WAIT_AND_MOVE(next) \
+    while ((readBtn() & SCE_CTRL_CIRCLE) == 0); \
+    state = (next)
+
+#define PASS_OR_MOVE(row, next) \
+    if (ret < 0) { \
+        drawText((row), "error", red); \
+        drawText((row) + 2, "please press circle", green); \
+        WAIT_AND_MOVE((next)); \
+        break; \
+    } \
+    drawText((row), "done", green);
+
 int injector_main() {
     vita2d_init();
     vita2d_set_clear_color(RGBA8(0x00, 0x00, 0x00, 0xFF));
@@ -185,24 +213,29 @@ int injector_main() {
     uint32_t red = RGBA8(0xFF, 0x00, 0x00, 0xFF);
 
     int btn;
+    char buf[256];
+    applist list = {0};
 
-    applist list;
-    if (get_applist(&list) < 0) {
+    int ret = get_applist(&list);
+    if (ret < 0) {
         vita2d_start_drawing();
         vita2d_clear_screen();
 
-        drawText(0, "initialize error", red);
+        snprintf(buf, 256, "initialize error, %x", ret);
+        drawText(0, buf, red);
 
         vita2d_end_drawing();
         vita2d_wait_rendering_done();
         vita2d_swap_buffers();
+
         while (readBtn());
         return -1;
     }
     appinfo *head, *tail, *curr;
     curr = head = tail = list.items;
+
     int i = 0;
-    while (tail && tail->next) {
+    while (tail->next) {
         i++;
         if (i == PAGE_ITEM_COUNT) {
             break;
@@ -211,8 +244,6 @@ int injector_main() {
     }
 
     int state = INJECTOR_MAIN;
-    char buf[256];
-    char patch[256], backup[256];
 
     cleanupPrevInject(&list);
 
@@ -222,41 +253,35 @@ int injector_main() {
         switch (state) {
             case INJECTOR_MAIN:
                 drawLoopText(0, "Vita Save Manager 0.3", white);
-                appinfo *tmp = head;
-                i = 2;
-                while(tmp) {
-                    snprintf(buf, 255, "%s: %s",
-                             tmp->title_id,
-                             tmp->title);
-                    drawLoopText(i, buf, curr == tmp ? green : white);
-                    if (tmp == tail) {
-                        break;
-                    }
-                    tmp = tmp->next;
-                    i++;
-                }
-
+                print_game_list(head, tail, curr);
                 drawLoopText(24, "UP/DOWN Select Item", white);
                 drawLoopText(25, "CIRCLE Confirm", white);
                 drawLoopText(26, "CROSS Exit", white);
 
                 btn = readBtn();
-
-                if (btn & SCE_CTRL_CIRCLE) state = INJECTOR_TITLE_SELECT;
-                else if (btn & SCE_CTRL_CROSS) state = INJECTOR_EXIT;
-                else if (btn & SCE_CTRL_UP && curr->prev) {
+                if (btn & SCE_CTRL_CIRCLE) {
+                    state = INJECTOR_TITLE_SELECT;
+                    break;
+                }
+                if (btn & SCE_CTRL_CROSS) {
+                    state = INJECTOR_EXIT;
+                    break;
+                }
+                if ((btn & SCE_CTRL_UP) && curr->prev) {
                     if (curr == head) {
                         head = head->prev;
                         tail = tail->prev;
                     }
                     curr = curr->prev;
+                    break;
                 }
-                else if (btn & SCE_CTRL_DOWN && curr->next) {
+                if ((btn & SCE_CTRL_DOWN) && curr->next) {
                     if (curr == tail) {
                         tail = tail->next;
                         head = head->next;
                     }
                     curr = curr->next;
+                    break;
                 }
                 break;
             case INJECTOR_TITLE_SELECT:
@@ -278,32 +303,20 @@ int injector_main() {
             case INJECTOR_START_DUMPER:
                 clearScreen();
 
+                char patch[256], backup[256];
                 if (strcmp(curr->dev, "ux0") == 0) {
                     // vitamin or digital
                     snprintf(backup, 256, "%s.orig", curr->eboot);
                     snprintf(buf, 255, "backup %s to %s", curr->eboot, backup);
                     drawText(0, buf, white);
-                    if (sceIoRename(curr->eboot, backup) < 0) {
-                        drawText(1, "error", red);
-
-                        drawText(3, "please press circle", green);
-                        while ((readBtn() & SCE_CTRL_CIRCLE) == 0);
-                        state = INJECTOR_TITLE_SELECT;
-                        break;
-                    }
-                    drawText(1, "done", green);
+                    ret = sceIoRename(curr->eboot, backup);
+                    PASS_OR_MOVE(1, INJECTOR_TITLE_SELECT);
 
                     snprintf(buf, 255, "install dumper to %s", curr->eboot);
                     drawText(2, buf, white);
-                    if (copyfile("ux0:app/SAVEMGR00/eboot.bin", curr->eboot) < 0) {
-                        drawText(3, "error", red);
-                        // TODO restore eboot
-                        drawText(5, "please press circle", green);
-                        while ((readBtn() & SCE_CTRL_CIRCLE) == 0);
-                        state = INJECTOR_TITLE_SELECT;
-                        break;
-                    }
-                    drawText(3, "done", white);
+                    ret = copyfile("ux0:app/SAVEMGR00/eboot.bin", curr->eboot);
+                    // TODO if error, need restore eboot
+                    PASS_OR_MOVE(3, INJECTOR_TITLE_SELECT);
                 } else {
                     sprintf(patch, "ux0:patch/%s", curr->title_id);
                     sprintf(backup, "ux0:patch/%s_orig", curr->title_id);
@@ -313,8 +326,7 @@ int injector_main() {
                         drawText(0, "cartridge not inserted", red);
 
                         drawText(2, "please press circle", green);
-                        while ((readBtn() & SCE_CTRL_CIRCLE) == 0);
-                        state = INJECTOR_TITLE_SELECT;
+                        WAIT_AND_MOVE(INJECTOR_TITLE_SELECT);
                         break;
                     }
 
@@ -326,30 +338,15 @@ int injector_main() {
                         drawText(0, buf, white);
                         rmdir(backup);
                         ret = mvdir(patch, backup);
-                        if (ret < 0) {
-                            drawText(1,  "error", red);
-
-                            drawText(3, "please press circle", green);
-                            while ((readBtn() & SCE_CTRL_CIRCLE) == 0);
-                            state = INJECTOR_TITLE_SELECT;
-                            break;
-                        }
-                        drawText(1, "done", green);
+                        PASS_OR_MOVE(1, INJECTOR_TITLE_SELECT);
                     }
 
                     // inject dumper to patch
                     snprintf(buf, 255, "install dumper to %s...", patch);
                     drawText(4, buf, white);
                     ret = copydir("ux0:app/SAVEMGR00", patch);
-                    if (ret < 0) {
-                        drawText(5, "error", red);
-                        // TODO restore patch
-                        drawText(7, "please press circle", green);
-                        while ((readBtn() & SCE_CTRL_CIRCLE) == 0);
-                        state = INJECTOR_TITLE_SELECT;
-                        break;
-                    }
-                    drawText(5, "done", white);
+                    // TODO restore patch
+                    PASS_OR_MOVE(5, INJECTOR_TITLE_SELECT);
                 }
 
                 // backup for next cleanup
@@ -423,8 +420,7 @@ int dumper_main() {
                 drawText(5, "done", white);
 
                 drawText(7, "please press circle", green);
-                while ((readBtn() & SCE_CTRL_CIRCLE) == 0);
-                state = DUMPER_MAIN;
+                WAIT_AND_MOVE(DUMPER_MAIN);
                 break;
             case DUMPER_IMPORT:
                 clearScreen();
@@ -437,8 +433,7 @@ int dumper_main() {
                 drawText(5, "done", white);
 
                 drawText(7, "please press circle", green);
-                while ((readBtn() & SCE_CTRL_CIRCLE) == 0);
-                state = DUMPER_MAIN;
+                WAIT_AND_MOVE(DUMPER_MAIN);
                 break;
             case DUMPER_EXIT:
                 launch("SAVEMGR00");
