@@ -24,14 +24,14 @@ uint32_t green = RGBA8(0x00, 0xFF, 0x00, 0xFF);
 uint32_t red = RGBA8(0xFF, 0x00, 0x00, 0xFF);
 
 void drawText(uint32_t y, char* text, uint32_t color){
-	int i;
-	for (i=0;i<3;i++){
-		vita2d_start_drawing();
-		vita2d_pgf_draw_text(debug_font, 2, (y + 1) * ROW_HEIGHT, color, 1.0, text	);
-		vita2d_end_drawing();
-		vita2d_wait_rendering_done();
-		vita2d_swap_buffers();
-	}
+    int i;
+    for (i=0;i<3;i++){
+        vita2d_start_drawing();
+        vita2d_pgf_draw_text(debug_font, 2, (y + 1) * ROW_HEIGHT, color, 1.0, text);
+        vita2d_end_drawing();
+        vita2d_wait_rendering_done();
+        vita2d_swap_buffers();
+    }
 }
 
 void drawLoopText(uint32_t y, char *text, uint32_t color) {
@@ -39,14 +39,14 @@ void drawLoopText(uint32_t y, char *text, uint32_t color) {
 }
 
 void clearScreen(){
-	int i;
-	for (i=0;i<3;i++){
-		vita2d_start_drawing();
-		vita2d_clear_screen();
-		vita2d_end_drawing();
-		vita2d_wait_rendering_done();
-		vita2d_swap_buffers();
-	}
+    int i;
+    for (i=0;i<3;i++){
+        vita2d_start_drawing();
+        vita2d_clear_screen();
+        vita2d_end_drawing();
+        vita2d_wait_rendering_done();
+        vita2d_swap_buffers();
+    }
 }
 
 enum {
@@ -465,5 +465,5 @@ int main() {
     } else {
         dumper_main();
     }
-	sceKernelExitProcess(0);
+    sceKernelExitProcess(0);
 }

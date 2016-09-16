@@ -29,7 +29,6 @@ static int get_applist_callback(void *data, int argc, char **argv, char **cols) 
             info->title_id[i] = ' ';
         }
     }
-
     return 0;
 }
 
@@ -49,8 +48,8 @@ int get_applist(applist *list) {
                   " where a.titleid = b.titleid"
                   "   and a.titleid = c.titleid";
 
-	sqlite3 *db;
-	int ret = sqlite3_open(APP_DB, &db);
+    sqlite3 *db;
+    int ret = sqlite3_open(APP_DB, &db);
     if (ret) {
         return -1;
     }
