@@ -265,7 +265,7 @@ int injector_main() {
         vita2d_clear_screen();
         switch (state) {
             case INJECTOR_MAIN:
-                drawLoopText(0, "Vita Save Manager 0.3", white);
+                drawLoopText(0, "Vita Save Manager 0.4", white);
                 print_game_list(head, tail, curr);
                 drawLoopText(24, "UP/DOWN Select Item", white);
                 drawLoopText(25, "CIRCLE Confirm", white);
@@ -421,7 +421,7 @@ int dumper_main() {
 
         switch (state) {
             case DUMPER_MAIN:
-                drawLoopText(0, "Vita Save Dumper 0.3", white);
+                drawLoopText(0, "Vita Save Dumper 0.4", white);
                 drawLoopText(2, "DO NOT CLOSE APPLICATION MANUALLY", red);
 
                 drawLoopText(24, "CIRCLE Export", white);
@@ -435,7 +435,7 @@ int dumper_main() {
                 break;
             case DUMPER_EXPORT:
                 clearScreen();
-                drawText(0, "Vita Save Dumper 0.3", white);
+                drawText(0, "Vita Save Dumper 0.4", white);
                 drawText(2, "DO NOT CLOSE APPLICATION MANUALLY", red);
 
                 snprintf(buf, 256, "export to %s ...", to);
@@ -448,7 +448,7 @@ int dumper_main() {
                 break;
             case DUMPER_IMPORT:
                 clearScreen();
-                drawText(0, "Vita Save Dumper 0.3", white);
+                drawText(0, "Vita Save Dumper 0.4", white);
                 drawText(2, "DO NOT CLOSE APPLICATION MANUALLY", red);
 
                 snprintf(buf, 256, "import to %s ...", from);
