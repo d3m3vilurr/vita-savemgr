@@ -5,6 +5,7 @@
 
 typedef struct appinfo {
     char title_id[16];
+    char real_id[16];
     char title[256];
     char eboot[256];
     char dev[5];

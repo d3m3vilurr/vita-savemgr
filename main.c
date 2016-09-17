@@ -91,7 +91,20 @@ int launch(const char *titleid) {
     return 0;
 }
 
-int cleanupPrevInject(applist *list) {
+int fetch_realid_from_temp(char *buf) {
+    int fd = sceIoOpen(TEMP_FILE, SCE_O_RDONLY, 0777);
+    if (fd <= 0) {
+        return -1;
+    }
+
+    sceIoLseek(fd, 16, SCE_SEEK_SET);
+    sceIoRead(fd, buf, 16);
+    sceIoClose(fd);
+
+    return 0;
+}
+
+int cleanup_prev_inject(applist *list) {
     int fd = sceIoOpen(TEMP_FILE, SCE_O_RDONLY, 0777);
     if (fd <= 0) {
         return 0;
@@ -245,7 +258,7 @@ int injector_main() {
 
     int state = INJECTOR_MAIN;
 
-    cleanupPrevInject(&list);
+    cleanup_prev_inject(&list);
 
     while (1) {
         vita2d_start_drawing();
@@ -352,6 +365,7 @@ int injector_main() {
                 // backup for next cleanup
                 int fd = sceIoOpen(TEMP_FILE, SCE_O_WRONLY | SCE_O_CREAT,0777);
                 sceIoWrite(fd, curr->title_id, 16);
+                sceIoWrite(fd, curr->real_id, 16);
                 sceIoClose(fd);
 
                 drawText(8, "DO NOT CLOSE APPLICATION MANUALLY", red);
@@ -380,16 +394,26 @@ int injector_main() {
 int dumper_main() {
     int state = DUMPER_MAIN;
 
-    char titleid[16], title[256];
+    char titleid[16], realid[16], title[256];
     sceAppMgrAppParamGetString(0, 9, title , 256);
     sceAppMgrAppParamGetString(0, 12, titleid , 256);
 
     sceIoMkdir("ux0:/data/rinCheat", 0777);
     sceIoMkdir("ux0:/data/savemgr", 0777);
 
+    if (fetch_realid_from_temp(realid) < 0) {
+        strcpy(realid, titleid);
+    }
+
     char buf[256];
-    char path[256];
-    sprintf(path,"ux0:/data/rinCheat/%s_SAVEDATA", titleid);
+    char from[256];
+    char to[256];
+    if (strcmp(titleid, realid) == 0) {
+        sprintf(from, "savedata0:");
+    } else {
+        sprintf(from, "ux0:/user/00/savedata/%s", realid);
+    }
+    sprintf(to, "ux0:/data/rinCheat/%s_SAVEDATA", titleid);
 
     while (1) {
         vita2d_start_drawing();
@@ -414,9 +438,9 @@ int dumper_main() {
                 drawText(0, "Vita Save Dumper 0.3", white);
                 drawText(2, "DO NOT CLOSE APPLICATION MANUALLY", red);
 
-                snprintf(buf, 256, "export to %s ...", path);
+                snprintf(buf, 256, "export to %s ...", to);
                 drawText(4, buf, white);
-                dumpSavedataDir("savedata0:", path);
+                dumpSavedataDir(from, to);
                 drawText(5, "done", white);
 
                 drawText(7, "please press circle", green);
@@ -427,9 +451,9 @@ int dumper_main() {
                 drawText(0, "Vita Save Dumper 0.3", white);
                 drawText(2, "DO NOT CLOSE APPLICATION MANUALLY", red);
 
-                snprintf(buf, 256, "import from %s ...", path);
+                snprintf(buf, 256, "import to %s ...", from);
                 drawText(4, buf, white);
-                restoreSavedataDir(path, NULL);
+                restoreSavedataDir(to, from);
                 drawText(5, "done", white);
 
                 drawText(7, "please press circle", green);
