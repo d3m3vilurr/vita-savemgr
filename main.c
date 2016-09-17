@@ -360,6 +360,15 @@ int injector_main() {
                     ret = copydir("ux0:app/SAVEMGR00", patch);
                     // TODO restore patch
                     PASS_OR_MOVE(5, INJECTOR_TITLE_SELECT);
+
+                    snprintf(patch, 255, "ux0:patch/%s/sce_sys/param.sfo", curr->title_id);
+                    snprintf(buf, 255, "recopy param.sfo to %s...", patch);
+                    drawText(7, buf, white);
+
+                    snprintf(buf, 255, "gro0:app/%s/sce_sys/param.sfo", curr->title_id);
+                    ret = copyfile(buf, patch);
+
+                    PASS_OR_MOVE(8, INJECTOR_TITLE_SELECT);
                 }
 
                 // backup for next cleanup
@@ -368,7 +377,7 @@ int injector_main() {
                 sceIoWrite(fd, curr->real_id, 16);
                 sceIoClose(fd);
 
-                drawText(8, "DO NOT CLOSE APPLICATION MANUALLY", red);
+                drawText(10, "DO NOT CLOSE APPLICATION MANUALLY", red);
 
                 // wait 3sec
                 sceKernelDelayThread(3000000);
