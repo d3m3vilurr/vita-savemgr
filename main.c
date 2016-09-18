@@ -130,7 +130,7 @@ int cleanup_prev_inject(applist *list) {
     int ret;
     char backup[256];
 
-    if (strcmp(tmp->dev, "ux0") == 0) {
+    /*if (strcmp(tmp->dev, "ux0") == 0) {
         vita2d_start_drawing();
         vita2d_clear_screen();
 
@@ -150,7 +150,7 @@ int cleanup_prev_inject(applist *list) {
         }
         drawText(3, "done", white);
         ret = 0;
-    } else {
+    } else {*/
         char patch[256];
         char eboot[256];
         snprintf(patch, 256, "ux0:patch/%s", titleid);
@@ -181,7 +181,7 @@ int cleanup_prev_inject(applist *list) {
             drawText(3, "done", white);
         }
         ret = 0;
-    }
+    //}
 exit:
     vita2d_end_drawing();
     vita2d_wait_rendering_done();
@@ -265,7 +265,7 @@ int injector_main() {
         vita2d_clear_screen();
         switch (state) {
             case INJECTOR_MAIN:
-                drawLoopText(0, "Vita Save Manager 0.4", white);
+                drawLoopText(0, "Vita Save Manager 0.4.1b", white);
                 print_game_list(head, tail, curr);
                 drawLoopText(24, "UP/DOWN Select Item", white);
                 drawLoopText(25, "CIRCLE Confirm", white);
@@ -317,7 +317,8 @@ int injector_main() {
                 clearScreen();
 
                 char patch[256], backup[256];
-                if (strcmp(curr->dev, "ux0") == 0) {
+				
+                /*if (strcmp(curr->dev, "ux0") == 0) {
                     // vitamin or digital
                     snprintf(backup, 256, "%s.orig", curr->eboot);
                     snprintf(buf, 255, "backup %s to %s", curr->eboot, backup);
@@ -330,7 +331,7 @@ int injector_main() {
                     ret = copyfile("ux0:app/SAVEMGR00/eboot.bin", curr->eboot);
                     // TODO if error, need restore eboot
                     PASS_OR_MOVE(3, INJECTOR_TITLE_SELECT);
-                } else {
+                } else {*/
                     sprintf(patch, "ux0:patch/%s", curr->title_id);
                     sprintf(backup, "ux0:patch/%s_orig", curr->title_id);
 
@@ -364,12 +365,13 @@ int injector_main() {
                     snprintf(patch, 255, "ux0:patch/%s/sce_sys/param.sfo", curr->title_id);
                     snprintf(buf, 255, "recopy param.sfo to %s...", patch);
                     drawText(7, buf, white);
-
-                    snprintf(buf, 255, "gro0:app/%s/sce_sys/param.sfo", curr->title_id);
+					
+					//Copy param.sfo from game source folder to patch folder
+                    snprintf(buf, 255, "%s:app/%s/sce_sys/param.sfo", curr->dev, curr->title_id);
                     ret = copyfile(buf, patch);
 
                     PASS_OR_MOVE(8, INJECTOR_TITLE_SELECT);
-                }
+                //}
 
                 // backup for next cleanup
                 int fd = sceIoOpen(TEMP_FILE, SCE_O_WRONLY | SCE_O_CREAT,0777);
@@ -430,7 +432,7 @@ int dumper_main() {
 
         switch (state) {
             case DUMPER_MAIN:
-                drawLoopText(0, "Vita Save Dumper 0.4", white);
+                drawLoopText(0, "Vita Save Dumper 0.4.1b", white);
                 drawLoopText(2, "DO NOT CLOSE APPLICATION MANUALLY", red);
 
                 drawLoopText(24, "CIRCLE Export", white);
@@ -444,7 +446,7 @@ int dumper_main() {
                 break;
             case DUMPER_EXPORT:
                 clearScreen();
-                drawText(0, "Vita Save Dumper 0.4", white);
+                drawText(0, "Vita Save Dumper 0.4.1b", white);
                 drawText(2, "DO NOT CLOSE APPLICATION MANUALLY", red);
 
                 snprintf(buf, 256, "export to %s ...", to);
@@ -457,7 +459,7 @@ int dumper_main() {
                 break;
             case DUMPER_IMPORT:
                 clearScreen();
-                drawText(0, "Vita Save Dumper 0.4", white);
+                drawText(0, "Vita Save Dumper 0.4.1b", white);
                 drawText(2, "DO NOT CLOSE APPLICATION MANUALLY", red);
 
                 snprintf(buf, 256, "import to %s ...", from);
