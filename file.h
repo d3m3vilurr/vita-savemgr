@@ -11,4 +11,6 @@ int copydir(const char *src, const char *dest);
 int copyfile(char *src, char *dest);
 
 int is_dumper_eboot(const char *path);
+
+int is_dumped_eboot( const char *path);
 #endif

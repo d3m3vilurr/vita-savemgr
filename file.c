@@ -228,3 +228,21 @@ int is_dumper_eboot(const char *path) {
     free(eboot);
     return ret;
 }
+
+//Check if the game if dumped or not (based from eboot.bin)
+int is_dumped_eboot( const char *path) {
+	//check if eboot is a dumped version
+	SceUID file = sceIoOpen( path , SCE_O_RDONLY, 0777);
+	sceIoLseek( file, 0, SEEK_SET );
+	char *bytes = malloc( 3 );
+	sceIoRead( file, bytes, 3 );
+	sceIoClose( file );
+	char header[4];
+	snprintf(header, 4, "%s", bytes);
+									
+	int is_dumped = (strcmp( header, "SCE" ) == 0);
+	
+	free( bytes );
+	//free( header );
+    return is_dumped;
+}
