@@ -1,4 +1,10 @@
 TITLE_ID = SAVEMGR00
+VERSION = 0.4.1
+
+ifeq ($(RELEASE),)
+	VERSION := $(VERSION)-$(shell git describe --abbrev=7 --dirty --always)
+endif
+
 TARGET = savemgr
 OBJS   = main.o savedata.o file.o appdb.o vita_sqlite.o sqlite3/sqlite3.o
 
@@ -10,7 +16,8 @@ LIBS = -lSceKernel_stub -lSceDisplay_stub -lSceGxm_stub \
 PREFIX  = arm-vita-eabi
 CC      = $(PREFIX)-gcc
 CFLAGS  = -Wl,-q -Wall -O3 -std=c99 \
-		  -DSQLITE_OS_OTHER=1 -DSQLITE_TEMP_STORE=3 -DSQLITE_THREADSAFE=0
+		  -DSQLITE_OS_OTHER=1 -DSQLITE_TEMP_STORE=3 -DSQLITE_THREADSAFE=0 \
+		  -DVERSION=\"$(VERSION)\"
 ASFLAGS = $(CFLAGS)
 
 all: $(TARGET).vpk
