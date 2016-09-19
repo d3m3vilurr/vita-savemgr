@@ -36,6 +36,3 @@ Project use these project's code.
 
 [VitaShell]: https://github.com/TheOfficialFloW/VitaShell
 [rinCheat]: https://github.com/Rinnegatamante/rinCheat
-
-## License confirmation
-![](http://i.imgur.com/Oz66w1v.png)

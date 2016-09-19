@@ -6,7 +6,7 @@ ifeq ($(RELEASE),)
 endif
 
 TARGET = savemgr
-OBJS   = main.o savedata.o file.o appdb.o vita_sqlite.o sqlite3/sqlite3.o
+OBJS   = main.o file.o appdb.o vita_sqlite.o sqlite3/sqlite3.o
 
 LIBS = -lSceKernel_stub -lSceDisplay_stub -lSceGxm_stub \
 	   -lSceAppMgr_stub -lSceAppUtil_stub -lSceSysmodule_stub \

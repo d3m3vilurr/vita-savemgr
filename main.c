@@ -11,7 +11,6 @@
 
 #include "appdb.h"
 #include "file.h"
-#include "savedata.h"
 
 #define SAVE_MANAGER    "SAVEMGR00"
 #define TEMP_FILE       "ux0:data/savemgr/tmp"
