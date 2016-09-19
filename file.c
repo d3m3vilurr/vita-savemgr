@@ -242,7 +242,7 @@ int is_dumped_eboot( const char *path) {
 									
 	int is_dumped = (strcmp( header, "SCE" ) == 0);
 	
-	//free( bytes );
+	free( bytes );
 	//free( header );
     return is_dumped;
 }
