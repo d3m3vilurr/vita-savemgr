@@ -318,40 +318,9 @@ int injector_main() {
             case INJECTOR_START_DUMPER:
                 clearScreen();
 
-                char patch[256], backup[256], gameType[32];
-				
-								
-				
-				
-				
-				
-				
-				
-				//check if eboot is a dumped version
-				/*
-				SceUID file = sceIoOpen( curr->eboot , SCE_O_RDONLY, 0777);
-				sceIoLseek( file, 0, SEEK_SET );
-				char *bytes = malloc( 3 );
-				sceIoRead( file, bytes, 3 );
-				sceIoClose( file );
-				char header[4];
-				snprintf(header, 4, "%s", bytes);
-				//drawText(0, header, white);
-											
-				int is_dumped = (strcmp( header, "SCE" ) == 0);
-				*/
-				
+                char patch[256], backup[256], gameType[32];				
 				int is_dumped = is_dumped_eboot( curr->eboot );
-											
-				/*
-				char message[256];
-				snprintf(message, 256, "Resultat %d", is_dumped);
-				drawText(1, message, white);
-				*/
-				
-				
-				
-				
+													
                 if (strcmp(curr->dev, "ux0") == 0 && is_dumped) {
                     // vitamin or digital dumped
 					snprintf(gameType, 32, "DUMPED GAME");
