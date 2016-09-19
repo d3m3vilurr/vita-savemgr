@@ -1,5 +1,5 @@
 TITLE_ID = SAVEMGR00
-VERSION = 0.4.1
+VERSION = 0.5.0
 
 ifeq ($(RELEASE),)
 	VERSION := $(VERSION)-$(shell git describe --abbrev=7 --dirty --always)
