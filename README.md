@@ -1,5 +1,8 @@
 Dump & restore decrypted savefile.
 
+## What difference between the official ?
+This version add supports for undumped games, which is not currently supported on the official 0.4.1
+
 ## How to use
 1. Install vpk
 2. Launch savemgr in Home shell
