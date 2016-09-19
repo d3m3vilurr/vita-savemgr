@@ -6,7 +6,7 @@
 
 // based on test_demovfs.c
 
-#include "sqlite3.h"
+#include "sqlite3/sqlite3.h"
 
 #include <stdio.h>
 #include <string.h>

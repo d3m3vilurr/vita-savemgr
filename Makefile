@@ -5,7 +5,7 @@ OBJS   = main.o savedata.o file.o appdb.o vita_sqlite.o sqlite3/sqlite3.o
 LIBS = -lSceKernel_stub -lSceDisplay_stub -lSceGxm_stub \
 	   -lSceAppMgr_stub -lSceAppUtil_stub -lSceSysmodule_stub \
 	   -lSceCtrl_stub -lScePgf_stub -lz -lm \
-	   -lsqlite3 -lvita2d -lfreetype
+	   -lvita2d -lfreetype
 
 PREFIX  = arm-vita-eabi
 CC      = $(PREFIX)-gcc
