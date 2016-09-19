@@ -228,3 +228,15 @@ int is_dumper_eboot(const char *path) {
     free(eboot);
     return ret;
 }
+
+int is_encrypted_eboot(const char *path) {
+    SceUID fd = sceIoOpen(path, SCE_O_RDONLY, 0777);
+    if (fd < 0) {
+        return 0;
+    }
+    char code[4] = {0};
+    sceIoRead(fd, code, 4);
+    sceIoClose(fd);
+
+    return strncmp(code, "SCE", 4) != 0;
+}
