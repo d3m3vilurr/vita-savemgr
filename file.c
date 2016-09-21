@@ -93,68 +93,27 @@ int copyfile(char *src, char *dest) {
         return -1;
     }
 
+    int ignore_error = strncmp(dest, "savedata0:", 10) == 0;
+
     SceUID fdsrc = sceIoOpen(src, SCE_O_RDONLY, 0);
-    if (fdsrc < 0)
+    if (!ignore_error && fdsrc < 0)
         return fdsrc;
 
-    SceUID fddst = sceIoOpen(dest, SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0777);
-    if (fddst < 0) {
-        sceIoClose(fdsrc);
-        return fddst;
-    }
-
-    void *buf = malloc(65536);
-
-    uint64_t seek = 0;
-
-    while (1) {
-        int read = sceIoRead(fdsrc, buf, 65536);
-        if (read == SCE_ERROR_ERRNO_ENODEV) {
-            fdsrc = sceIoOpen(src, SCE_O_RDONLY, 0);
-            if (fdsrc >= 0) {
-                sceIoLseek(fdsrc, seek, SCE_SEEK_SET);
-                read = sceIoRead(fdsrc, buf, 65536);
-            }
-        }
-
-        if (read < 0) {
-            free(buf);
-
-            sceIoClose(fddst);
-            sceIoClose(fdsrc);
-
-            return read;
-        }
-
-        if (read == 0)
-            break;
-
-        int written = sceIoWrite(fddst, buf, read);
-        if (written == SCE_ERROR_ERRNO_ENODEV) {
-            fddst = sceIoOpen(dest, SCE_O_WRONLY | SCE_O_CREAT, 0777);
-            if (fddst >= 0) {
-                sceIoLseek(fddst, seek, SCE_SEEK_SET);
-                written = sceIoWrite(fddst, buf, read);
-            }
-        }
-
-        if (written != read) {
-            free(buf);
-
-            sceIoClose(fddst);
-            sceIoClose(fdsrc);
-
-            return (written < 0) ? written : -1;
-        }
-
-        seek += written;
-    }
-
-    free(buf);
-
-    sceIoClose(fddst);
+    int size = sceIoLseek(fdsrc, 0, SEEK_END);
+    sceIoLseek(fdsrc, 0, SEEK_SET);
+    void *buf = malloc(size);
+    sceIoRead(fdsrc, buf, size);
     sceIoClose(fdsrc);
 
+    SceUID fddst = sceIoOpen(dest, SCE_O_WRONLY | SCE_O_CREAT, 0777);
+    if (!ignore_error && fddst < 0) {
+        return fddst;
+    }
+    sceIoWrite(fddst, buf, size);
+    sceIoClose(fddst);
+
+
+    free(buf);
     return 1;
 }
 
@@ -164,14 +123,13 @@ int copydir(const char *src, const char *dest) {
     }
 
     SceUID dfd = sceIoDopen(src);
-    if (dfd < 0) {
-        return copyfile(src, dest);
-    }
 
-    int ret = sceIoMkdir(dest, 0777);
-    if (ret < 0 && ret != SCE_ERROR_ERRNO_EEXIST) {
-        sceIoDclose(dfd);
-        return ret;
+    if (!exists(dest)) {
+        int ret = sceIoMkdir(dest, 0777);
+        if (ret < 0 && ret != SCE_ERROR_ERRNO_EEXIST) {
+            sceIoDclose(dfd);
+            return ret;
+        }
     }
 
     int res = 0;
