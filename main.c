@@ -487,7 +487,7 @@ int dumper_main() {
 
                 snprintf(buf, 256, "import from %s ...", backup_dir);
                 drawText(4, buf, white);
-                ret = copydir(backup_dir, save_dir);
+                ret = copydir(backup_dir, "savedata0:");
                 PASS_OR_MOVE(5, DUMPER_MAIN);
                 WAIT_AND_MOVE(7, DUMPER_MAIN);
                 break;
