@@ -395,7 +395,7 @@ int injector_main() {
 int dumper_main() {
     int state = DUMPER_MAIN;
 
-    char title[256], titleid[256], buf[256], backup_dir[256];
+    char title[256], titleid[256], buf[256], save_dir[256], backup_dir[256];
 
     char version_string[256];
     snprintf(version_string, 256, "Vita Save Dumper %s", VERSION);
@@ -444,6 +444,11 @@ int dumper_main() {
     }
 
     sprintf(backup_dir, "ux0:/data/rinCheat/%s_SAVEDATA", info.title_id);
+    if (strcmp(info.title_id, info.real_id) == 0) {
+        sprintf(save_dir, "savedata0:");
+    } else {
+        sprintf(save_dir, "ux0:user/00/savedata/%s", info.real_id);
+    }
 
     while (1) {
         vita2d_start_drawing();
@@ -470,7 +475,7 @@ int dumper_main() {
 
                 snprintf(buf, 256, "export to %s ...", backup_dir);
                 drawText(4, buf, white);
-                copydir("savedata0:", backup_dir);
+                copydir(save_dir, backup_dir);
                 drawText(5, "done", white);
 
                 WAIT_AND_MOVE(7, DUMPER_MAIN);
@@ -482,7 +487,7 @@ int dumper_main() {
 
                 snprintf(buf, 256, "import to %s ...", backup_dir);
                 drawText(4, buf, white);
-                copydir(backup_dir, "savedata0:");
+                copydir(backup_dir, save_dir);
                 drawText(5, "done", white);
 
                 WAIT_AND_MOVE(7, DUMPER_MAIN);
