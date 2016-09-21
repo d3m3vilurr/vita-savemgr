@@ -187,7 +187,8 @@ void print_game_list(appinfo *head, appinfo *tail, appinfo *curr) {
 
 #define PASS_OR_MOVE(row, next) \
     if (ret < 0) { \
-        drawText((row), "error", red); \
+        snprintf(buf, 256, "error 0x%08X", ret); \
+        drawText((row), buf, red); \
         WAIT_AND_MOVE((row) + 2, (next)); \
         break; \
     } \
@@ -475,9 +476,8 @@ int dumper_main() {
 
                 snprintf(buf, 256, "export to %s ...", backup_dir);
                 drawText(4, buf, white);
-                copydir(save_dir, backup_dir);
-                drawText(5, "done", white);
-
+                ret = copydir(save_dir, backup_dir);
+                PASS_OR_MOVE(5, DUMPER_MAIN);
                 WAIT_AND_MOVE(7, DUMPER_MAIN);
                 break;
             case DUMPER_IMPORT:
@@ -485,11 +485,10 @@ int dumper_main() {
                 drawText(0, version_string, white);
                 drawText(2, "DO NOT CLOSE APPLICATION MANUALLY", red);
 
-                snprintf(buf, 256, "import to %s ...", backup_dir);
+                snprintf(buf, 256, "import from %s ...", backup_dir);
                 drawText(4, buf, white);
-                copydir(backup_dir, save_dir);
-                drawText(5, "done", white);
-
+                ret = copydir(backup_dir, save_dir);
+                PASS_OR_MOVE(5, DUMPER_MAIN);
                 WAIT_AND_MOVE(7, DUMPER_MAIN);
                 break;
             case DUMPER_EXIT:
