@@ -29,7 +29,7 @@ If you do something mess, please do these steps.
 GPLv3
 
 ## Credits
-Project use these project's code.
+Project use these project's codes.
 
 * [VitaShell][]
 * [rinCheat][]
