@@ -1,5 +1,7 @@
 TITLE_ID = SAVEMGR00
+TITLE = Save Manager
 VERSION = 0.5.0
+APP_VER = $(shell python -c "print '%02d.%02d' % tuple(map(lambda x: int(x), '$(VERSION)'.split('.')[:2]))")
 
 ifeq ($(RELEASE),)
 	VERSION := $(VERSION)-$(shell git describe --abbrev=7 --dirty --always)
@@ -23,7 +25,7 @@ ASFLAGS = $(CFLAGS)
 all: $(TARGET).vpk
 
 %.vpk: eboot.bin
-	vita-mksfoex -s TITLE_ID=$(TITLE_ID) "$(TARGET)" param.sfo
+	vita-mksfoex -s TITLE_ID=$(TITLE_ID) -s APP_VER=$(APP_VER) "$(TITLE)" param.sfo
 	vita-pack-vpk -s param.sfo -b eboot.bin $@
 
 eboot.bin: $(TARGET).velf
