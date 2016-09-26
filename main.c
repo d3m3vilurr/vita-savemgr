@@ -3,10 +3,12 @@
 #include <string.h>
 #include <psp2/ctrl.h>
 #include <psp2/appmgr.h>
+#include <psp2/apputil.h>
 #include <psp2/kernel/processmgr.h>
 #include <psp2/io/dirent.h>
 #include <psp2/io/fcntl.h>
 #include <psp2/ctrl.h>
+#include <psp2/system_param.h>
 #include <vita2d.h>
 
 #include "appdb.h"
@@ -23,6 +25,20 @@ vita2d_pgf* debug_font;
 uint32_t white = RGBA8(0xFF, 0xFF, 0xFF, 0xFF);
 uint32_t green = RGBA8(0x00, 0xFF, 0x00, 0xFF);
 uint32_t red = RGBA8(0xFF, 0x00, 0x00, 0xFF);
+
+int enter_button = 0;
+int SCE_CTRL_ENTER = SCE_CTRL_CIRCLE;
+int SCE_CTRL_CANCEL = SCE_CTRL_CROSS;
+char enter_text[8];
+char cancel_text[8]; 
+
+char* concat(const char *s1, const char *s2)
+{
+    char *result = malloc(strlen(s1)+strlen(s2)+1);
+    strcpy(result, s1);
+    strcat(result, s2);
+    return result;
+}
 
 void drawText(uint32_t y, char* text, uint32_t color){
     int i;
@@ -118,44 +134,44 @@ int cleanup_prev_inject(applist *list) {
             return 0;
         }
 
-        drawText(0, "cleanup old data", white);
+        drawText(0, "Cleaning up old data...", white);
         ret = rmdir(patch);
         if (ret < 0) {
-            drawText(1, "error", red);
+            drawText(1, "Error", red);
             goto exit;
         }
-        drawText(1, "done", white);
+        drawText(1, "Done", white);
 
         snprintf(backup, 256, "ux0:patch/%s_orig", info.title_id);
         if (is_dir(backup)) {
-            drawText(3, "restore patch", white);
+            drawText(3, "Restoring patch...", white);
             ret = mvdir(backup, patch);
             if (ret < 0) {
-                drawText(4, "error", red);
+                drawText(4, "Error", red);
                 goto exit;
             }
-            drawText(4, "done", white);
+            drawText(4, "Done", white);
         }
         ret = 0;
     } else {
         vita2d_start_drawing();
         vita2d_clear_screen();
 
-        drawText(0, "cleanup old data", white);
+        drawText(0, "Cleaning up old data...", white);
         snprintf(backup, 256, "%s.orig", info.eboot);
         ret = sceIoRemove(info.eboot);
         if (ret < 0) {
-            drawText(1, "error", red);
+            drawText(1, "Error", red);
             goto exit;
         }
-        drawText(1, "done", white);
-        drawText(3, "restore eboot", white);
+        drawText(1, "Done", white);
+        drawText(3, "Restoring eboot", white);
         ret = sceIoRename(backup, info.eboot);
         if (ret < 0) {
-            drawText(4, "error", red);
+            drawText(4, "Error", red);
             goto exit;
         }
-        drawText(4, "done", white);
+        drawText(4, "Done", white);
         ret = 0;
     }
 exit:
@@ -181,18 +197,18 @@ void print_game_list(appinfo *head, appinfo *tail, appinfo *curr) {
 }
 
 #define WAIT_AND_MOVE(row, next) \
-    drawText((row), "please press circle", green); \
-    while ((readBtn() & SCE_CTRL_CIRCLE) == 0); \
+    drawText((row), concat("Please press ", enter_text), green); \
+    while ((readBtn() & SCE_CTRL_ENTER) == 0); \
     state = (next)
 
 #define PASS_OR_MOVE(row, next) \
     if (ret < 0) { \
-        snprintf(buf, 256, "error 0x%08X", ret); \
+        snprintf(buf, 256, "Error 0x%08X", ret); \
         drawText((row), buf, red); \
         WAIT_AND_MOVE((row) + 2, (next)); \
         break; \
     } \
-    drawText((row), "done", green);
+    drawText((row), "Done", green);
 
 int injector_main() {
     vita2d_init();
@@ -210,7 +226,7 @@ int injector_main() {
         vita2d_start_drawing();
         vita2d_clear_screen();
 
-        snprintf(buf, 256, "initialize error, %x", ret);
+        snprintf(buf, 256, "Initialization error, %x", ret);
         drawText(0, buf, red);
 
         vita2d_end_drawing();
@@ -245,16 +261,16 @@ int injector_main() {
 
                 print_game_list(head, tail, curr);
 
-                drawLoopText(24, "UP/DOWN Select Item", white);
-                drawLoopText(25, "CIRCLE Confirm", white);
-                drawLoopText(26, "CROSS Exit", white);
+                drawLoopText(24, "UP/DOWN - Select Item", white);
+                drawLoopText(25, concat(enter_text, " - Confirm"), white);
+                drawLoopText(26, concat(cancel_text, " - Exit"), white);
 
                 btn = readBtn();
-                if (btn & SCE_CTRL_CIRCLE) {
+                if (btn & SCE_CTRL_ENTER) {
                     state = INJECTOR_TITLE_SELECT;
                     break;
                 }
-                if (btn & SCE_CTRL_CROSS) {
+                if (btn & SCE_CTRL_CANCEL) {
                     state = INJECTOR_EXIT;
                     break;
                 }
@@ -282,13 +298,14 @@ int injector_main() {
                 snprintf(buf, 255, "TITLE_ID: %s", curr->title_id);
                 drawLoopText(3, buf, white);
 
-                drawLoopText(25, "CIRCLE start dumper", white);
-                drawLoopText(26, "CROSS return to mainmenu", white);
+                drawLoopText(25, concat(enter_text, " - Start Dumper"), white);
+                drawLoopText(26, concat(cancel_text, " - Return to Main Menu"), white);
+
 
                 btn = readBtn();
-                if (btn & SCE_CTRL_CIRCLE) {
+                if (btn & SCE_CTRL_ENTER) {
                     state = INJECTOR_START_DUMPER;
-                } else if (btn & SCE_CTRL_CROSS) {
+                } else if (btn & SCE_CTRL_CANCEL) {
                     state = INJECTOR_MAIN;
                 }
                 break;
@@ -301,9 +318,9 @@ int injector_main() {
                 // cartridge & digital encrypted games
                 if (!exists(curr->eboot)) {
                     if (strcmp(curr->dev, "gro0") == 0) {
-                        drawText(2, "not insert cartridge", red);
+                        drawText(2, "Cartridge not inserted", red);
                     } else {
-                        drawText(2, "cannot find game", red);
+                        drawText(2, "Cannot find game", red);
                     }
 
                     WAIT_AND_MOVE(4, INJECTOR_TITLE_SELECT);
@@ -311,7 +328,7 @@ int injector_main() {
                 }
 
                 if (is_encrypted_eboot(curr->eboot)) {
-                    drawText(2, "inject for encrypted game", white);
+                    drawText(2, "Injecting (encrypted game)...", white);
                     sprintf(patch, "ux0:patch/%s", curr->title_id);
                     sprintf(backup, "ux0:patch/%s_orig", curr->title_id);
 
@@ -319,7 +336,7 @@ int injector_main() {
                     // need to backup patch dir
                     int ret;
                     if (is_dir(patch) && !is_dumper_eboot(buf)) {
-                        snprintf(buf, 255, "backup %s to %s ...", patch, backup);
+                        snprintf(buf, 255, "Backing up %s to %s...", patch, backup);
                         drawText(4, buf, white);
                         rmdir(backup);
                         ret = mvdir(patch, backup);
@@ -327,14 +344,15 @@ int injector_main() {
                     }
 
                     // inject dumper to patch
-                    snprintf(buf, 255, "install dumper to %s...", patch);
+                    snprintf(buf, 255, "Installing dumper to %s...", patch);
                     drawText(7, buf, white);
                     ret = copydir("ux0:app/SAVEMGR00", patch);
                     // TODO restore patch
                     PASS_OR_MOVE(8, INJECTOR_TITLE_SELECT);
 
                     snprintf(patch, 255, "ux0:patch/%s/sce_sys/param.sfo", curr->title_id);
-                    snprintf(buf, 255, "recopy param.sfo to %s...", patch);
+                    //Restoring or Copying?
+                    snprintf(buf, 255, "Copying param.sfo to %s...", patch);
                     drawText(10, buf, white);
 
                     snprintf(buf, 255, "%s:app/%s/sce_sys/param.sfo", curr->dev, curr->title_id);
@@ -342,23 +360,23 @@ int injector_main() {
 
                     PASS_OR_MOVE(11, INJECTOR_TITLE_SELECT);
                 } else {
-                    drawText(2, "inject for decrypted game", white);
+                    drawText(2, "Injecting (decrypted game)...", white);
                     ret = -1;
 
                     if (strcmp(curr->dev, "gro0") == 0) {
-                        drawText(4, "cannot handle this game", red);
-                        drawText(5, "please send bug report to github project", white);
+                        drawText(4, "Game not supported", red);
+                        drawText(5, "Please send a bug report on github", white);
 
                         PASS_OR_MOVE(7, INJECTOR_TITLE_SELECT);
                     }
                     // vitamin or digital
                     snprintf(backup, 256, "%s.orig", curr->eboot);
-                    snprintf(buf, 255, "backup %s to %s", curr->eboot, backup);
+                    snprintf(buf, 255, "Backing up %s to %s...", curr->eboot, backup);
                     drawText(4, buf, white);
                     ret = sceIoRename(curr->eboot, backup);
                     PASS_OR_MOVE(5, INJECTOR_TITLE_SELECT);
 
-                    snprintf(buf, 255, "install dumper to %s", curr->eboot);
+                    snprintf(buf, 255, "Installing dumper to %s...", curr->eboot);
                     drawText(7, buf, white);
                     ret = copyfile("ux0:app/SAVEMGR00/eboot.bin", curr->eboot);
                     // TODO if error, need restore eboot
@@ -370,12 +388,12 @@ int injector_main() {
                 sceIoWrite(fd, curr, sizeof(appinfo));
                 sceIoClose(fd);
 
-                drawText(13, "DO NOT CLOSE APPLICATION MANUALLY", red);
+                drawText(13, "DO NOT CLOSE APPLICATION MANUALLY!", red);
 
                 // wait 3sec
                 sceKernelDelayThread(3000000);
 
-                drawText(15, "start dumper...", green);
+                drawText(15, "Starting dumper...", green);
 
                 // TODO store state
                 launch(curr->title_id);
@@ -399,7 +417,7 @@ int dumper_main() {
     char title[256], titleid[256], buf[256], save_dir[256], backup_dir[256];
 
     char version_string[256];
-    snprintf(version_string, 256, "Vita Save Dumper %s", VERSION);
+    snprintf(version_string, 256, "Vita Save Manager %s", VERSION);
 
     sceAppMgrAppParamGetString(0, 9, title , 256);
     sceAppMgrAppParamGetString(0, 12, titleid , 256);
@@ -416,7 +434,7 @@ int dumper_main() {
     int ret;
     if (fd < 0) {
         ret = -1;
-        drawText(0, "cannot find inject data", red);
+        drawText(0, "Cannot find inject data", red);
 
         WAIT_AND_MOVE(2, DUMPER_EXIT);
 
@@ -433,7 +451,7 @@ int dumper_main() {
     if (strcmp(info.title_id, titleid) != 0) {
         ret = -2;
 
-        drawText(0, "wrong inject information", red);
+        drawText(0, "Wrong inject information", red);
 
         WAIT_AND_MOVE(2, DUMPER_EXIT);
 
@@ -458,23 +476,23 @@ int dumper_main() {
         switch (state) {
             case DUMPER_MAIN:
                 drawLoopText(0, version_string, white);
-                drawLoopText(2, "DO NOT CLOSE APPLICATION MANUALLY", red);
+                drawLoopText(2, "DO NOT CLOSE APPLICATION MANUALLY!", red);
 
-                drawLoopText(24, "CIRCLE Export", white);
-                drawLoopText(25, "TRIANGLE Import", white);
-                drawLoopText(26, "CROSS Exit", white);
+                drawLoopText(24, concat(enter_text, " - Export"), white);
+                drawLoopText(25, "TRIANGLE - Import", white);
+                drawLoopText(26, concat(cancel_text, " - Exit"), white);
 
                 int btn = readBtn();
-                if (btn & SCE_CTRL_CIRCLE) state = DUMPER_EXPORT;
+                if (btn & SCE_CTRL_ENTER) state = DUMPER_EXPORT;
                 if (btn & SCE_CTRL_TRIANGLE) state = DUMPER_IMPORT;
-                if (btn & SCE_CTRL_CROSS) state = DUMPER_EXIT;
+                if (btn & SCE_CTRL_CANCEL) state = DUMPER_EXIT;
                 break;
             case DUMPER_EXPORT:
                 clearScreen();
                 drawText(0, version_string, white);
-                drawText(2, "DO NOT CLOSE APPLICATION MANUALLY", red);
+                drawText(2, "DO NOT CLOSE APPLICATION MANUALLY!", red);
 
-                snprintf(buf, 256, "export to %s ...", backup_dir);
+                snprintf(buf, 256, "Exporting to %s...", backup_dir);
                 drawText(4, buf, white);
                 ret = copydir(save_dir, backup_dir);
                 PASS_OR_MOVE(5, DUMPER_MAIN);
@@ -483,9 +501,9 @@ int dumper_main() {
             case DUMPER_IMPORT:
                 clearScreen();
                 drawText(0, version_string, white);
-                drawText(2, "DO NOT CLOSE APPLICATION MANUALLY", red);
+                drawText(2, "DO NOT CLOSE APPLICATION MANUALLY!", red);
 
-                snprintf(buf, 256, "import from %s ...", backup_dir);
+                snprintf(buf, 256, "Importing from %s...", backup_dir);
                 drawText(4, buf, white);
                 ret = copydir(backup_dir, "savedata0:");
                 PASS_OR_MOVE(5, DUMPER_MAIN);
@@ -510,6 +528,23 @@ int main() {
     char titleid[16], title[256];
     sceAppMgrAppParamGetString(0, 9, title , 256);
     sceAppMgrAppParamGetString(0, 12, titleid , 256);
+
+    SceAppUtilInitParam init_param;
+    SceAppUtilBootParam boot_param;
+    memset(&init_param, 0, sizeof(SceAppUtilInitParam));
+    memset(&boot_param, 0, sizeof(SceAppUtilBootParam));
+    sceAppUtilInit(&init_param, &boot_param);
+
+    sceAppUtilSystemParamGetInt(SCE_SYSTEM_PARAM_ID_ENTER_BUTTON, &enter_button);
+    if (enter_button == SCE_SYSTEM_PARAM_ENTER_BUTTON_CROSS) {
+        SCE_CTRL_ENTER = SCE_CTRL_CROSS;
+        SCE_CTRL_CANCEL = SCE_CTRL_CIRCLE;
+        strcpy(enter_text, "CROSS");
+        strcpy(cancel_text, "CIRCLE");
+    } else {
+        strcpy(enter_text, "CIRCLE");
+        strcpy(cancel_text, "CROSS");
+    }
 
     if (strcmp(titleid, SAVE_MANAGER) == 0) {
         injector_main();

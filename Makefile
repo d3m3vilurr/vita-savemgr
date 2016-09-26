@@ -1,5 +1,5 @@
 TITLE_ID = SAVEMGR00
-TITLE = Save Manager
+TITLE = Vita Save Manager
 VERSION = 0.6.0
 APP_VER = $(shell python -c "print '%02d.%02d' % tuple(map(lambda x: int(x), '$(VERSION)'.split('.')[:2]))")
 
