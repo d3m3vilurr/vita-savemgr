@@ -24,7 +24,7 @@
 
 typedef struct VitaFile {
     sqlite3_file base;
-    unsigned fd;
+    signed fd;
 } VitaFile;
 
 // File ops

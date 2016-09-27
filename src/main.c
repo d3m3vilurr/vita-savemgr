@@ -296,7 +296,7 @@ int injector_main() {
                 clearScreen();
                 drawText(0, version_string, white);
 
-                char patch[256], backup[256];
+                char backup[256];
 
                 // cartridge & digital encrypted games
                 if (!exists(curr->eboot)) {
@@ -311,6 +311,7 @@ int injector_main() {
                 }
 
                 if (is_encrypted_eboot(curr->eboot)) {
+                    char patch[256];
                     drawText(2, "inject for encrypted game", white);
                     sprintf(patch, "ux0:patch/%s", curr->title_id);
                     sprintf(backup, "ux0:patch/%s_orig", curr->title_id);

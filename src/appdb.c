@@ -26,8 +26,8 @@ static int get_applist_callback(void *data, int argc, char **argv, char **cols) 
     strcpy(info->eboot, argv[3]);
     strcpy(info->dev, argv[4]);
     for (int i = 0; i < 256; i++) {
-        if (info->title_id[i] == '\n') {
-            info->title_id[i] = ' ';
+        if (info->title[i] == '\n') {
+            info->title[i] = ' ';
         }
     }
     return 0;
