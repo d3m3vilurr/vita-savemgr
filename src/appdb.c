@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
-#include "sqlite3/sqlite3.h"
+#include "sqlite3.h"
 #include "appdb.h"
 
 #define APP_DB "ur0:shell/db/app.db"
