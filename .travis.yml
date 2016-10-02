@@ -1,0 +1,12 @@
+language: c
+
+addons:
+    apt:
+        packages:
+            - cppcheck
+
+cache:
+    - apt
+
+script:
+    - cppcheck --error-exitcode=1 --enable=style,performance,portability src/*.c
