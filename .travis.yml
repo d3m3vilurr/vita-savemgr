@@ -4,9 +4,19 @@ addons:
     apt:
         packages:
             - cppcheck
+            - curl
+            - cmake
+            - patch
 
 cache:
-    - apt
+    directories:
+        - $VITASDK
+        - $HOME/opt
+
+before_script:
+    - bash .travis.d/install_toolchain.sh
 
 script:
     - cppcheck --error-exitcode=1 --enable=style,performance,portability src/*.c
+    - mkdir build
+    - cd build && cmake .. && make
