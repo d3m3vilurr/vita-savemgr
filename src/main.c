@@ -27,18 +27,10 @@ uint32_t green = RGBA8(0x00, 0xFF, 0x00, 0xFF);
 uint32_t red = RGBA8(0xFF, 0x00, 0x00, 0xFF);
 
 int enter_button = 0;
-int SCE_CTRL_ENTER = SCE_CTRL_CIRCLE;
-int SCE_CTRL_CANCEL = SCE_CTRL_CROSS;
+int SCE_CTRL_ENTER;
+int SCE_CTRL_CANCEL;
 char enter_text[8];
-char cancel_text[8]; 
-
-char* concat(const char *s1, const char *s2)
-{
-    char *result = malloc(strlen(s1)+strlen(s2)+1);
-    strcpy(result, s1);
-    strcat(result, s2);
-    return result;
-}
+char cancel_text[8];
 
 void drawText(uint32_t y, char* text, uint32_t color){
     int i;
@@ -195,6 +187,9 @@ void print_game_list(appinfo *head, appinfo *tail, appinfo *curr) {
         i++;
     }
 }
+
+#define concat(str1, str2) \
+    snprintf(buf, 256, "%s%s", str1, str2) ? buf : ""
 
 #define WAIT_AND_MOVE(row, next) \
     drawText((row), concat("Please press ", enter_text), green); \
@@ -530,21 +525,21 @@ int main() {
     sceAppMgrAppParamGetString(0, 9, title , 256);
     sceAppMgrAppParamGetString(0, 12, titleid , 256);
 
-    SceAppUtilInitParam init_param;
-    SceAppUtilBootParam boot_param;
-    memset(&init_param, 0, sizeof(SceAppUtilInitParam));
-    memset(&boot_param, 0, sizeof(SceAppUtilBootParam));
+    SceAppUtilInitParam init_param = {0};
+    SceAppUtilBootParam boot_param = {0};
     sceAppUtilInit(&init_param, &boot_param);
 
     sceAppUtilSystemParamGetInt(SCE_SYSTEM_PARAM_ID_ENTER_BUTTON, &enter_button);
-    if (enter_button == SCE_SYSTEM_PARAM_ENTER_BUTTON_CROSS) {
+    if (enter_button == SCE_SYSTEM_PARAM_ENTER_BUTTON_CIRCLE) {
+        SCE_CTRL_ENTER = SCE_CTRL_CIRCLE;
+        SCE_CTRL_CANCEL = SCE_CTRL_CROSS;
+        strcpy(enter_text, "CIRCLE");
+        strcpy(cancel_text, "CROSS");
+    } else {
         SCE_CTRL_ENTER = SCE_CTRL_CROSS;
         SCE_CTRL_CANCEL = SCE_CTRL_CIRCLE;
         strcpy(enter_text, "CROSS");
         strcpy(cancel_text, "CIRCLE");
-    } else {
-        strcpy(enter_text, "CIRCLE");
-        strcpy(cancel_text, "CROSS");
     }
 
     if (strcmp(titleid, SAVE_MANAGER) == 0) {
