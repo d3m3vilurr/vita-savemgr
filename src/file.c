@@ -17,7 +17,6 @@ int exists(const char *path) {
     SceIoStat stat = {0};
     int ret = sceIoGetstat(path, &stat);
     return ret != SCE_ERROR_ERRNO_ENOENT &&
-        ret != SCE_ERROR_ERRNO_ENOENT &&
         ret != SCE_ERROR_ERRNO_ENODEV;
 }
 

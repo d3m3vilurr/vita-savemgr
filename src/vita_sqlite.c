@@ -6,7 +6,7 @@
 
 // based on test_demovfs.c
 
-#include "sqlite3/sqlite3.h"
+#include "sqlite3.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -24,7 +24,7 @@
 
 typedef struct VitaFile {
     sqlite3_file base;
-    unsigned fd;
+    signed fd;
 } VitaFile;
 
 // File ops

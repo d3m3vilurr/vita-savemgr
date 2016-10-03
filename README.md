@@ -1,4 +1,5 @@
 Dump & restore decrypted savefile.
+[![Build Status](https://travis-ci.org/d3m3vilurr/vita-savemgr.svg?branch=master)](https://travis-ci.org/d3m3vilurr/vita-savemgr)
 
 ## How to use
 1. Install vpk
