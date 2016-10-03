@@ -26,11 +26,17 @@ uint32_t white = RGBA8(0xFF, 0xFF, 0xFF, 0xFF);
 uint32_t green = RGBA8(0x00, 0xFF, 0x00, 0xFF);
 uint32_t red = RGBA8(0xFF, 0x00, 0x00, 0xFF);
 
+const char *ICON_CIRCLE = "\xe2\x97\x8b";
+const char *ICON_CROSS = "\xe2\x95\xb3";
+const char *ICON_SQUARE = "\xe2\x96\xa1";
+const char *ICON_TRIANGLE = "\xe2\x96\xb3";
+const char *ICON_UPDOWN = "\xe2\x86\x95";
+
 int enter_button = 0;
 int SCE_CTRL_ENTER;
 int SCE_CTRL_CANCEL;
-char enter_text[8];
-char cancel_text[8];
+char ICON_ENTER[4];
+char ICON_CANCEL[4];
 
 void drawText(uint32_t y, char* text, uint32_t color){
     int i;
@@ -192,7 +198,7 @@ void print_game_list(appinfo *head, appinfo *tail, appinfo *curr) {
     snprintf(buf, 256, "%s%s", str1, str2) ? buf : ""
 
 #define WAIT_AND_MOVE(row, next) \
-    drawText((row), concat("Please press ", enter_text), green); \
+    drawText((row), concat("Please press ", ICON_ENTER), green); \
     while ((readBtn() & SCE_CTRL_ENTER) == 0); \
     state = (next)
 
@@ -256,9 +262,9 @@ int injector_main() {
 
                 print_game_list(head, tail, curr);
 
-                drawLoopText(24, "UP/DOWN - Select Item", white);
-                drawLoopText(25, concat(enter_text, " - Confirm"), white);
-                drawLoopText(26, concat(cancel_text, " - Exit"), white);
+                drawLoopText(24, concat(ICON_UPDOWN, " - Select Item"), white);
+                drawLoopText(25, concat(ICON_ENTER, " - Confirm"), white);
+                drawLoopText(26, concat(ICON_CANCEL, " - Exit"), white);
 
                 btn = readBtn();
                 if (btn & SCE_CTRL_ENTER) {
@@ -293,8 +299,8 @@ int injector_main() {
                 snprintf(buf, 255, "TITLE_ID: %s", curr->title_id);
                 drawLoopText(3, buf, white);
 
-                drawLoopText(25, concat(enter_text, " - Start Dumper"), white);
-                drawLoopText(26, concat(cancel_text, " - Return to Main Menu"), white);
+                drawLoopText(25, concat(ICON_ENTER, " - Start Dumper"), white);
+                drawLoopText(26, concat(ICON_CANCEL, " - Return to Main Menu"), white);
 
 
                 btn = readBtn();
@@ -474,9 +480,9 @@ int dumper_main() {
                 drawLoopText(0, version_string, white);
                 drawLoopText(2, "DO NOT CLOSE APPLICATION MANUALLY!", red);
 
-                drawLoopText(24, concat(enter_text, " - Export"), white);
-                drawLoopText(25, "TRIANGLE - Import", white);
-                drawLoopText(26, concat(cancel_text, " - Exit"), white);
+                drawLoopText(24, concat(ICON_ENTER, " - Export"), white);
+                drawLoopText(25, concat(ICON_TRIANGLE, " - Import"), white);
+                drawLoopText(26, concat(ICON_CANCEL, " - Exit"), white);
 
                 int btn = readBtn();
                 if (btn & SCE_CTRL_ENTER) state = DUMPER_EXPORT;
@@ -533,13 +539,13 @@ int main() {
     if (enter_button == SCE_SYSTEM_PARAM_ENTER_BUTTON_CIRCLE) {
         SCE_CTRL_ENTER = SCE_CTRL_CIRCLE;
         SCE_CTRL_CANCEL = SCE_CTRL_CROSS;
-        strcpy(enter_text, "CIRCLE");
-        strcpy(cancel_text, "CROSS");
+        strcpy(ICON_ENTER, ICON_CIRCLE);
+        strcpy(ICON_CANCEL, ICON_CROSS);
     } else {
         SCE_CTRL_ENTER = SCE_CTRL_CROSS;
         SCE_CTRL_CANCEL = SCE_CTRL_CIRCLE;
-        strcpy(enter_text, "CROSS");
-        strcpy(cancel_text, "CIRCLE");
+        strcpy(ICON_ENTER, ICON_CROSS);
+        strcpy(ICON_CANCEL, ICON_CIRCLE);
     }
 
     if (strcmp(titleid, SAVE_MANAGER) == 0) {
