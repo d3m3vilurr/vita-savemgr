@@ -38,6 +38,7 @@ include_directories(
 add_executable(${PROJECT_NAME}.elf
     src/appdb.c
     src/file.c
+    src/font.c
     src/main.c
     src/vita_sqlite.c
 
