@@ -13,6 +13,7 @@
 
 #include "appdb.h"
 #include "file.h"
+#include "font.h"
 
 #define SAVE_MANAGER    "SAVEMGR00"
 #define TEMP_FILE       "ux0:data/savemgr/tmp"
@@ -525,7 +526,7 @@ int main() {
     vita2d_init();
     vita2d_set_clear_color(RGBA8(0x00, 0x00, 0x00, 0xFF));
 
-    debug_font = vita2d_load_default_pgf();
+    debug_font = load_system_fonts();
 
     char titleid[16], title[256];
     sceAppMgrAppParamGetString(0, 9, title , 256);
