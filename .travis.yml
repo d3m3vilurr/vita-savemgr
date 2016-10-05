@@ -20,3 +20,6 @@ script:
     - cppcheck --error-exitcode=1 --enable=style,performance,portability src/*.c
     - mkdir build
     - cd build && cmake .. && make
+
+after_success:
+    - bash travis.d/deploy_nightly.sh
