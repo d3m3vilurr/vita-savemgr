@@ -22,4 +22,4 @@ script:
     - cd build && cmake .. && make
 
 after_success:
-    - bash .travis.d/deploy_nightly.sh
+    - bash $TRAVIS_BUILD_DIR/.travis.d/deploy_nightly.sh
