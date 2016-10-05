@@ -8,6 +8,10 @@ addons:
             - cmake
             - patch
 
+branches:
+      except:
+          - /^nightly$/
+
 cache:
     directories:
         - $VITASDK
