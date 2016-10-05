@@ -17,12 +17,16 @@ fi
 REV=$(git rev-parse --short HEAD)
 BUILD_TIME=$(date --rfc-3339=seconds)
 
+echo "target branch:revision - $TRAVIS_BRANCH:$REV"
+echo "built $BUILD_TIME"
+
 # remove tags
 git remote add upstream "https://$GH_TOKEN@github.com/$TRAVIS_REPO_SLUG.git" > /dev/null 2>&1
 git push -q upstream ":refs/tags/nightly" > /dev/null 2>&1
 git tag -d nightly > /dev/null 2>&1
 git tag nightly > /dev/null 2>&1
 git push -q upstream --tags > /dev/null 2>&1
+git tag
 
 # delete pre uploaded
 ASSECT_URL=$(curl -s -H "Authorization: token $GH_TOKEN" "$API_URL/assets" | \
