@@ -81,7 +81,7 @@ enum {
     DUMPER_EXIT,
 };
 
-int readBtn() {
+int read_btn() {
     SceCtrlData pad = {0};
     static int old;
     int btn;
@@ -200,7 +200,7 @@ void print_game_list(appinfo *head, appinfo *tail, appinfo *curr) {
 
 #define WAIT_AND_MOVE(row, next) \
     drawText((row), concat("Please press ", ICON_ENTER), green); \
-    while ((readBtn() & SCE_CTRL_ENTER) == 0); \
+    while ((read_btn() & SCE_CTRL_ENTER) == 0); \
     state = (next)
 
 #define PASS_OR_MOVE(row, next) \
@@ -235,7 +235,7 @@ int injector_main() {
         vita2d_wait_rendering_done();
         vita2d_swap_buffers();
 
-        while (readBtn());
+        while (read_btn());
         return -1;
     }
     appinfo *head, *tail, *curr;
@@ -267,7 +267,7 @@ int injector_main() {
                 drawLoopText(25, concat(ICON_ENTER, " - Confirm"), white);
                 drawLoopText(26, concat(ICON_CANCEL, " - Exit"), white);
 
-                btn = readBtn();
+                btn = read_btn();
                 if (btn & SCE_CTRL_ENTER) {
                     state = INJECTOR_TITLE_SELECT;
                     break;
@@ -304,7 +304,7 @@ int injector_main() {
                 drawLoopText(26, concat(ICON_CANCEL, " - Return to Main Menu"), white);
 
 
-                btn = readBtn();
+                btn = read_btn();
                 if (btn & SCE_CTRL_ENTER) {
                     state = INJECTOR_START_DUMPER;
                 } else if (btn & SCE_CTRL_CANCEL) {
@@ -485,7 +485,7 @@ int dumper_main() {
                 drawLoopText(25, concat(ICON_TRIANGLE, " - Import"), white);
                 drawLoopText(26, concat(ICON_CANCEL, " - Exit"), white);
 
-                int btn = readBtn();
+                int btn = read_btn();
                 if (btn & SCE_CTRL_ENTER) state = DUMPER_EXPORT;
                 if (btn & SCE_CTRL_TRIANGLE) state = DUMPER_IMPORT;
                 if (btn & SCE_CTRL_CANCEL) state = DUMPER_EXIT;
