@@ -49,5 +49,5 @@ curl -s -X POST \
 curl -s -X PATCH \
      -H "Authorization: token $GH_TOKEN" \
      -H "Content-Type: application/json" \
-     -d "{\"tag_name\":\"nightly\",\"target_commitish\":\"$TRAVIS_BRANCH\",\"name\":\"Nightly build - $BUILD_TIME\",\"body\":\"$REV\",\"draft\":false,\"prerelease\":false}" \
+     -d "{\"tag_name\":\"nightly\",\"target_commitish\":\"$TRAVIS_BRANCH\",\"name\":\"Nightly build - $BUILD_TIME\",\"body\":\"[CHANGELOG](CHANGELOG.md#unreleased)\",\"draft\":false,\"prerelease\":false}" \
      "$API_URL"
