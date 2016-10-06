@@ -39,6 +39,8 @@ int SCE_CTRL_CANCEL;
 char ICON_ENTER[4];
 char ICON_CANCEL[4];
 
+#define SCE_CTRL_HOLD 0x80000000
+
 void drawText(uint32_t y, char* text, uint32_t color){
     int i;
     for (i=0;i<3;i++){
@@ -84,12 +86,29 @@ enum {
 int read_btn() {
     SceCtrlData pad = {0};
     static int old;
-    int btn;
+    static int hold_times;
+    int curr, btn;
 
     sceCtrlPeekBufferPositive(0, &pad, 1);
 
+    if (pad.ly < 0x10) {
+        pad.buttons |= SCE_CTRL_UP;
+    } else if (pad.ly > 0xef) {
+        pad.buttons |= SCE_CTRL_DOWN;
+    }
+    curr = pad.buttons;
     btn = pad.buttons & ~old;
-    old = pad.buttons;
+    if (curr && old == curr) {
+        hold_times += 1;
+        if (hold_times >= 10) {
+            btn = curr;
+            hold_times = 10;
+            btn |= SCE_CTRL_HOLD;
+        }
+    } else {
+        hold_times = 0;
+        old = curr;
+    }
     return btn;
 }
 
@@ -200,8 +219,10 @@ void print_game_list(appinfo *head, appinfo *tail, appinfo *curr) {
 
 #define WAIT_AND_MOVE(row, next) \
     drawText((row), concat("Please press ", ICON_ENTER), green); \
-    while ((read_btn() & SCE_CTRL_ENTER) == 0); \
-    state = (next)
+    do { \
+        btn = read_btn(); \
+    } while ((btn & SCE_CTRL_HOLD) != 0 || (btn & SCE_CTRL_ENTER) == 0); \
+    state = (next);
 
 #define PASS_OR_MOVE(row, next) \
     if (ret < 0) { \
@@ -272,7 +293,7 @@ int injector_main() {
                     state = INJECTOR_TITLE_SELECT;
                     break;
                 }
-                if (btn & SCE_CTRL_CANCEL) {
+                if (btn & SCE_CTRL_CANCEL && (btn & SCE_CTRL_HOLD) == 0) {
                     state = INJECTOR_EXIT;
                     break;
                 }
@@ -305,6 +326,9 @@ int injector_main() {
 
 
                 btn = read_btn();
+                if (btn & SCE_CTRL_HOLD) {
+                    break;
+                }
                 if (btn & SCE_CTRL_ENTER) {
                     state = INJECTOR_START_DUMPER;
                 } else if (btn & SCE_CTRL_CANCEL) {
@@ -435,6 +459,8 @@ int dumper_main() {
 
     int fd = sceIoOpen(TEMP_FILE, SCE_O_RDONLY, 0777);
     int ret;
+    int btn;
+
     if (fd < 0) {
         ret = -1;
         drawText(0, "Cannot find inject data", red);
@@ -485,7 +511,8 @@ int dumper_main() {
                 drawLoopText(25, concat(ICON_TRIANGLE, " - Import"), white);
                 drawLoopText(26, concat(ICON_CANCEL, " - Exit"), white);
 
-                int btn = read_btn();
+                btn = read_btn();
+                if (btn & SCE_CTRL_HOLD) break;
                 if (btn & SCE_CTRL_ENTER) state = DUMPER_EXPORT;
                 if (btn & SCE_CTRL_TRIANGLE) state = DUMPER_IMPORT;
                 if (btn & SCE_CTRL_CANCEL) state = DUMPER_EXIT;
@@ -527,6 +554,8 @@ int main() {
     vita2d_set_clear_color(RGBA8(0x00, 0x00, 0x00, 0xFF));
 
     debug_font = load_system_fonts();
+
+    sceCtrlSetSamplingMode(SCE_CTRL_MODE_ANALOG_WIDE);
 
     char titleid[16], title[256];
     sceAppMgrAppParamGetString(0, 9, title , 256);
