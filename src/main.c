@@ -8,6 +8,7 @@
 #include <psp2/io/fcntl.h>
 #include <psp2/ctrl.h>
 #include <psp2/system_param.h>
+#include <psp2/rtc.h>
 #include <vita2d.h>
 
 #include "common.h"
@@ -31,6 +32,7 @@ enum {
 
 enum {
     DUMPER_MAIN = 1,
+    DUMPER_SLOT_SELECT,
     DUMPER_EXPORT,
     DUMPER_IMPORT,
     DUMPER_EXIT,
@@ -133,8 +135,41 @@ void print_game_list(appinfo *head, appinfo *tail, appinfo *curr) {
     }
 }
 
-#define concat(str1, str2) \
-    snprintf(buf, 256, "%s%s", str1, str2) ? buf : ""
+void make_save_slot_string(int slot) {
+    snprintf(buf, 256, "ux0:/data/rinCheat/%s_SLOT%d/sce_sys/param.sfo", app_titleid, slot);
+    char date[20] = {0};
+    if (!exists(buf)) {
+        snprintf(date, 20, "none");
+    } else {
+        SceIoStat stat = {0};
+        sceIoGetstat(buf, &stat);
+
+        SceDateTime time;
+        SceRtcTick tick_utc;
+        SceRtcTick tick_local;
+        sceRtcGetTick(&stat.st_mtime, &tick_utc);
+        sceRtcConvertUtcToLocalTime(&tick_utc, &tick_local);
+        sceRtcSetTick(&time, &tick_local);
+
+        snprintf(date, 20, "%04d-%02d-%02d %02d:%02d:%02d",
+                 time.year, time.month, time.day, time.hour, time.minute, time.second);
+    }
+    snprintf(buf, 256, "Slot %d - %s", slot, date);
+}
+void print_save_slots(int curr_slot) {
+    int r = 4;
+    for (int i = 0; i < 10; i++) {
+        make_save_slot_string(i);
+        draw_loop_text(r + i, buf, curr_slot == i ? green : white);
+    }
+}
+
+char *concat(char *str1, char *str2) {
+    char tmp[256];
+    snprintf(tmp, 256, "%s%s", str1, str2);
+    memcpy(buf, tmp, 256);
+    return buf;
+}
 
 #define WAIT_AND_MOVE(row, next) \
     draw_text((row), concat("Please press ", ICON_ENTER), green); \
@@ -384,30 +419,62 @@ int dumper_main() {
         return -2;
     }
 
-    sprintf(backup_dir, "ux0:/data/rinCheat/%s_SAVEDATA", info.title_id);
     if (strcmp(info.title_id, info.real_id) == 0) {
         sprintf(save_dir, "savedata0:");
     } else {
         sprintf(save_dir, "ux0:user/00/savedata/%s", info.real_id);
     }
 
+    int slot = 0;
     while (1) {
         draw_start();
+
+        sprintf(backup_dir, "ux0:/data/rinCheat/%s_SLOT%d", info.title_id, slot);
 
         switch (state) {
             case DUMPER_MAIN:
                 draw_loop_text(0, version_string, white);
                 draw_loop_text(2, "DO NOT CLOSE APPLICATION MANUALLY!", red);
 
-                draw_loop_text(24, concat(ICON_ENTER, " - Export"), white);
-                draw_loop_text(25, concat(ICON_TRIANGLE, " - Import"), white);
+                print_save_slots(slot);
+
+                draw_loop_text(24, concat(ICON_UPDOWN, " - Select Slot"), white);
+                draw_loop_text(25, concat(ICON_ENTER, " - Confirm"), white);
                 draw_loop_text(26, concat(ICON_CANCEL, " - Exit"), white);
 
+                btn = read_btn();
+
+                if (btn & SCE_CTRL_ENTER) {
+                    state = DUMPER_SLOT_SELECT;
+                    break;
+                }
+                if (btn & SCE_CTRL_CANCEL && (btn & SCE_CTRL_HOLD) == 0) {
+                    state = DUMPER_EXIT;
+                    break;
+                }
+                if ((btn & SCE_CTRL_UP) && slot > 0) {
+                    slot -= 1;
+                    break;
+                }
+                if ((btn & SCE_CTRL_DOWN) && slot < 9) {
+                    slot += 1;
+                    break;
+                }
+                break;
+            case DUMPER_SLOT_SELECT:
+                draw_loop_text(0, version_string, white);
+                draw_loop_text(2, "DO NOT CLOSE APPLICATION MANUALLY!", red);
+                make_save_slot_string(slot);
+                draw_loop_text(4, concat("SELECT: ", buf), white);
+
+                draw_loop_text(24, concat(ICON_ENTER, " - Export"), white);
+                draw_loop_text(25, concat(ICON_TRIANGLE, " - Import"), white);
+                draw_loop_text(26, concat(ICON_CANCEL, " - Return to Select Slot"), white);
                 btn = read_btn();
                 if (btn & SCE_CTRL_HOLD) break;
                 if (btn & SCE_CTRL_ENTER) state = DUMPER_EXPORT;
                 if (btn & SCE_CTRL_TRIANGLE) state = DUMPER_IMPORT;
-                if (btn & SCE_CTRL_CANCEL) state = DUMPER_EXIT;
+                if (btn & SCE_CTRL_CANCEL) state = DUMPER_MAIN;
                 break;
             case DUMPER_EXPORT:
                 clear_screen();
@@ -417,8 +484,8 @@ int dumper_main() {
                 snprintf(buf, 256, "Exporting to %s...", backup_dir);
                 draw_text(4, buf, white);
                 ret = copydir(save_dir, backup_dir);
-                PASS_OR_MOVE(5, DUMPER_MAIN);
-                WAIT_AND_MOVE(7, DUMPER_MAIN);
+                PASS_OR_MOVE(5, DUMPER_SLOT_SELECT);
+                WAIT_AND_MOVE(7, DUMPER_SLOT_SELECT);
                 break;
             case DUMPER_IMPORT:
                 clear_screen();
@@ -428,8 +495,8 @@ int dumper_main() {
                 snprintf(buf, 256, "Importing from %s...", backup_dir);
                 draw_text(4, buf, white);
                 ret = copydir(backup_dir, "savedata0:");
-                PASS_OR_MOVE(5, DUMPER_MAIN);
-                WAIT_AND_MOVE(7, DUMPER_MAIN);
+                PASS_OR_MOVE(5, DUMPER_SLOT_SELECT);
+                WAIT_AND_MOVE(7, DUMPER_SLOT_SELECT);
                 break;
             case DUMPER_EXIT:
                 launch(SAVE_MANAGER);
