@@ -64,10 +64,8 @@ int cleanup_prev_inject(applist *list) {
     int ret;
     char backup[256];
 
+    draw_start();
     if (is_encrypted_eboot(info.eboot)) {
-        vita2d_start_drawing();
-        vita2d_clear_screen();
-
         char patch[256];
         char patch_eboot[256];
         snprintf(patch, 256, "ux0:patch/%s", info.title_id);
@@ -96,9 +94,6 @@ int cleanup_prev_inject(applist *list) {
         }
         ret = 0;
     } else {
-        vita2d_start_drawing();
-        vita2d_clear_screen();
-
         draw_text(0, "Cleaning up old data...", white);
         snprintf(backup, 256, "%s.orig", info.eboot);
         ret = sceIoRemove(info.eboot);
@@ -117,9 +112,7 @@ int cleanup_prev_inject(applist *list) {
         ret = 0;
     }
 exit:
-    vita2d_end_drawing();
-    vita2d_wait_rendering_done();
-    vita2d_swap_buffers();
+    draw_end();
     return ret;
 }
 
@@ -158,9 +151,6 @@ void print_game_list(appinfo *head, appinfo *tail, appinfo *curr) {
     draw_text((row), "Done", green);
 
 int injector_main() {
-    vita2d_init();
-    vita2d_set_clear_color(RGBA8(0x00, 0x00, 0x00, 0xFF));
-
     int btn;
     char buf[256];
     char version_string[256];
@@ -170,15 +160,12 @@ int injector_main() {
 
     int ret = get_applist(&list);
     if (ret < 0) {
-        vita2d_start_drawing();
-        vita2d_clear_screen();
+        draw_start();
 
         snprintf(buf, 256, "Initialization error, %x", ret);
         draw_text(0, buf, red);
 
-        vita2d_end_drawing();
-        vita2d_wait_rendering_done();
-        vita2d_swap_buffers();
+        draw_end();
 
         while (read_btn());
         return -1;
@@ -200,8 +187,8 @@ int injector_main() {
     cleanup_prev_inject(&list);
 
     while (1) {
-        vita2d_start_drawing();
-        vita2d_clear_screen();
+        draw_start();
+
         switch (state) {
             case INJECTOR_MAIN:
                 draw_loop_text(0, version_string, white);
@@ -350,15 +337,11 @@ int injector_main() {
                 launch(curr->title_id);
                 break;
             case INJECTOR_EXIT:
-                vita2d_end_drawing();
-                vita2d_wait_rendering_done();
-                vita2d_swap_buffers();
+                draw_end();
                 return 0;
         }
 
-        vita2d_end_drawing();
-        vita2d_wait_rendering_done();
-        vita2d_swap_buffers();
+        draw_end();
     }
 }
 
@@ -375,41 +358,33 @@ int dumper_main() {
 
     appinfo info;
 
-    vita2d_start_drawing();
-    vita2d_clear_screen();
-
     int fd = sceIoOpen(TEMP_FILE, SCE_O_RDONLY, 0777);
     int ret;
     int btn;
 
     if (fd < 0) {
-        ret = -1;
-        draw_text(0, "Cannot find inject data", red);
+        draw_start();
 
+        draw_text(0, "Cannot find inject data", red);
         WAIT_AND_MOVE(2, DUMPER_EXIT);
 
-        vita2d_end_drawing();
-        vita2d_wait_rendering_done();
-        vita2d_swap_buffers();
+        draw_end();
         launch(SAVE_MANAGER);
-        return ret;
+        return -1;
     }
 
     sceIoRead(fd, &info, sizeof(appinfo));
     sceIoClose(fd);
 
-    if (strcmp(info.title_id, titleid) != 0) {
-        ret = -2;
+    if (strcmp(info.title_id, app_titleid) != 0) {
+        draw_start();
 
         draw_text(0, "Wrong inject information", red);
-
         WAIT_AND_MOVE(2, DUMPER_EXIT);
 
-        vita2d_end_drawing();
-        vita2d_wait_rendering_done();
-        vita2d_swap_buffers();
+        draw_end();
         launch(SAVE_MANAGER);
-        return ret;
+        return -2;
     }
 
     sprintf(backup_dir, "ux0:/data/rinCheat/%s_SAVEDATA", info.title_id);
@@ -420,8 +395,7 @@ int dumper_main() {
     }
 
     while (1) {
-        vita2d_start_drawing();
-        vita2d_clear_screen();
+        draw_start();
 
         switch (state) {
             case DUMPER_MAIN:
@@ -464,9 +438,7 @@ int dumper_main() {
                 launch(SAVE_MANAGER);
                 break;
         }
-        vita2d_end_drawing();
-        vita2d_wait_rendering_done();
-        vita2d_swap_buffers();
+        draw_end();
     }
 }
 

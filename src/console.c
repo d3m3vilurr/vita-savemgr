@@ -49,14 +49,22 @@ void init_console() {
     sceCtrlSetSamplingMode(SCE_CTRL_MODE_ANALOG_WIDE);
 }
 
+void draw_start() {
+    vita2d_start_drawing();
+    vita2d_clear_screen();
+}
+
+void draw_end() {
+    vita2d_end_drawing();
+    vita2d_wait_rendering_done();
+    vita2d_swap_buffers();
+}
+
 void draw_text(uint32_t y, char* text, uint32_t color) {
-    int i;
-    for (i = 0; i < 3; i++){
+    for (int i = 0; i < 3; i++){
         vita2d_start_drawing();
         vita2d_pgf_draw_text(debug_font, 2, (y + 1) * ROW_HEIGHT, color, 1.0, text);
-        vita2d_end_drawing();
-        vita2d_wait_rendering_done();
-        vita2d_swap_buffers();
+        draw_end();
     }
 }
 
@@ -65,14 +73,9 @@ void draw_loop_text(uint32_t y, char *text, uint32_t color) {
 }
 
 void clear_screen() {
-    int i;
-    for (i = 0; i < 3; i++){
-        vita2d_start_drawing();
-        vita2d_clear_screen();
-        vita2d_end_drawing();
-        vita2d_wait_rendering_done();
-        vita2d_swap_buffers();
+    for (int i = 0; i < 3; i++){
+        draw_start();
+        draw_end();
     }
 }
-
 
