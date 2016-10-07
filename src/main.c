@@ -36,6 +36,10 @@ enum {
     DUMPER_EXIT,
 };
 
+int ret;
+int btn;
+char buf[256];
+
 int launch(const char *titleid) {
     char uri[32];
     sprintf(uri, "psgm:play?titleid=%s", titleid);
@@ -61,7 +65,6 @@ int cleanup_prev_inject(applist *list) {
 
     sceIoRemove(TEMP_FILE);
 
-    int ret;
     char backup[256];
 
     draw_start();
@@ -119,7 +122,6 @@ exit:
 void print_game_list(appinfo *head, appinfo *tail, appinfo *curr) {
     appinfo *tmp = head;
     int i = 2;
-    char buf[256];
     while (tmp) {
         snprintf(buf, 256, "%s: %s", tmp->title_id, tmp->title);
         draw_loop_text(i, buf, curr == tmp ? green : white);
@@ -151,14 +153,12 @@ void print_game_list(appinfo *head, appinfo *tail, appinfo *curr) {
     draw_text((row), "Done", green);
 
 int injector_main() {
-    int btn;
-    char buf[256];
     char version_string[256];
     snprintf(version_string, 256, "Vita Save Manager %s", VERSION);
 
     applist list = {0};
 
-    int ret = get_applist(&list);
+    ret = get_applist(&list);
     if (ret < 0) {
         draw_start();
 
@@ -272,7 +272,6 @@ int injector_main() {
 
                     snprintf(buf, 255, "%s/eboot.bin", patch);
                     // need to backup patch dir
-                    int ret;
                     if (is_dir(patch) && !is_dumper_eboot(buf)) {
                         snprintf(buf, 255, "Backing up %s to %s...", patch, backup);
                         draw_text(4, buf, white);
@@ -348,7 +347,7 @@ int injector_main() {
 int dumper_main() {
     int state = DUMPER_MAIN;
 
-    char buf[256], save_dir[256], backup_dir[256];
+    char save_dir[256], backup_dir[256];
 
     char version_string[256];
     snprintf(version_string, 256, "Vita Save Manager %s", VERSION);
@@ -359,8 +358,6 @@ int dumper_main() {
     appinfo info;
 
     int fd = sceIoOpen(TEMP_FILE, SCE_O_RDONLY, 0777);
-    int ret;
-    int btn;
 
     if (fd < 0) {
         draw_start();
