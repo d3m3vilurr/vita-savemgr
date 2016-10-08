@@ -1,0 +1,3 @@
+[submodule "extern/inih"]
+	path = extern/inih
+	url = https://github.com/benhoyt/inih
