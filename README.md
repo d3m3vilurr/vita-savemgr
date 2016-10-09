@@ -12,6 +12,29 @@ Dump & restore decrypted savefile.
 8. Repeat 3~7 steps or close savemgr
 9. Play game.
 
+## Configure
+If you want to use another dump directory format, make simple `config.ini` file into `ux0:data/savemgr`
+
+- use `ux0:data/savegames/PCSH00000_SLOT0`
+
+```ini
+base=/data/savegames
+slot_format=%s_SLOT%d
+```
+- use `ux0:data/savegames/PCSH00000/SLOT_0`
+
+```ini
+base=/data/savegames
+slot_format=%s/SLOT_%d
+```
+
+Default config like this
+
+```ini
+base=/data/rinCheat
+slot_format=%s_SAVEDATA_SLOT%d
+```
+
 ## Emergency guide
 If you do something mess, please do these steps.
 
