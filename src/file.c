@@ -5,6 +5,7 @@
 #include <psp2/io/fcntl.h>
 #include <psp2/io/dirent.h>
 
+#include "common.h"
 #include "file.h"
 
 #define printf psvDebugScreenPrintf
@@ -12,6 +13,7 @@
 #define SCE_ERROR_ERRNO_ENOENT 0x80010002
 #define SCE_ERROR_ERRNO_EEXIST 0x80010011
 #define SCE_ERROR_ERRNO_ENODEV 0x80010013
+#define SCE_ERROR_ERRNO_EINVAL 0x80010016
 
 int exists(const char *path) {
     SceIoStat stat = {0};
@@ -26,6 +28,37 @@ int is_dir(const char *path) {
         return 0;
     }
     return SCE_S_ISDIR(stat.st_mode);
+}
+
+int mkdir(const char *path, int mode) {
+    if (exists(path)) {
+        if (is_dir(path)) {
+            return 0;
+        }
+        return SCE_ERROR_ERRNO_EEXIST;
+    }
+    int len = strlen(path);
+    char p[len];
+    memset(p, 0, len);
+    for (int i = 0; i < len; i++) {
+        if (path[i] == '/') {
+            if (strcmp(p, "ux0:/") == 0) {
+                p[i] = path[i];
+                continue;
+
+            }
+            if (!exists(p)) {
+                sceIoMkdir(p, mode);
+            } else {
+                if (!is_dir(p)) {
+                    return SCE_ERROR_ERRNO_EINVAL;
+                }
+            }
+        }
+        p[i] = path[i];
+    }
+    sceIoMkdir(path, mode);
+    return 0;
 }
 
 int rmdir(const char *path) {

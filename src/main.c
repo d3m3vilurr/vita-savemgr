@@ -40,7 +40,8 @@ enum {
 
 int ret;
 int btn;
-char buf[256];
+char *buf;
+int buf_length;
 
 int launch(const char *titleid) {
     char uri[32];
@@ -121,6 +122,13 @@ exit:
     return ret;
 }
 
+char *concat(const char *str1, const char *str2) {
+    char tmp[buf_length];
+    snprintf(tmp, buf_length, "%s%s", str1, str2);
+    memcpy(buf, tmp, buf_length);
+    return buf;
+}
+
 void print_game_list(appinfo *head, appinfo *tail, appinfo *curr) {
     appinfo *tmp = head;
     int i = 2;
@@ -136,13 +144,15 @@ void print_game_list(appinfo *head, appinfo *tail, appinfo *curr) {
 }
 
 void make_save_slot_string(int slot) {
-    snprintf(buf, 256, "ux0:/data/rinCheat/%s_SLOT%d/sce_sys/param.sfo", app_titleid, slot);
+    char fn[buf_length];
+    snprintf(fn, buf_length,
+             concat(config.full_path_format, "/sce_sys/param.sfo"), app_titleid, slot);
     char date[20] = {0};
-    if (!exists(buf)) {
+    if (!exists(fn)) {
         snprintf(date, 20, "none");
     } else {
         SceIoStat stat = {0};
-        sceIoGetstat(buf, &stat);
+        sceIoGetstat(fn, &stat);
 
         SceDateTime time;
         SceRtcTick tick_utc;
@@ -162,13 +172,6 @@ void print_save_slots(int curr_slot) {
         make_save_slot_string(i);
         draw_loop_text(r + i, buf, curr_slot == i ? green : white);
     }
-}
-
-char *concat(char *str1, char *str2) {
-    char tmp[256];
-    snprintf(tmp, 256, "%s%s", str1, str2);
-    memcpy(buf, tmp, 256);
-    return buf;
 }
 
 #define WAIT_AND_MOVE(row, next) \
@@ -382,13 +385,10 @@ int injector_main() {
 int dumper_main() {
     int state = DUMPER_MAIN;
 
-    char save_dir[256], backup_dir[256];
+    char save_dir[256], backup_dir[buf_length];
 
     char version_string[256];
     snprintf(version_string, 256, "Vita Save Manager %s", VERSION);
-
-    sceIoMkdir("ux0:/data/rinCheat", 0777);
-    sceIoMkdir("ux0:/data/savemgr", 0777);
 
     appinfo info;
 
@@ -429,7 +429,7 @@ int dumper_main() {
     while (1) {
         draw_start();
 
-        sprintf(backup_dir, "ux0:/data/rinCheat/%s_SLOT%d", info.title_id, slot);
+        snprintf(backup_dir, buf_length, config.full_path_format, info.title_id, slot);
 
         switch (state) {
             case DUMPER_MAIN:
@@ -466,6 +466,7 @@ int dumper_main() {
                 draw_loop_text(2, "DO NOT CLOSE APPLICATION MANUALLY!", red);
                 make_save_slot_string(slot);
                 draw_loop_text(4, concat("SELECT: ", buf), white);
+                draw_loop_text(5, concat("SAVE DIR: ", backup_dir), white);
 
                 draw_loop_text(24, concat(ICON_ENTER, " - Export"), white);
                 draw_loop_text(25, concat(ICON_TRIANGLE, " - Import"), white);
@@ -483,6 +484,7 @@ int dumper_main() {
 
                 snprintf(buf, 256, "Exporting to %s...", backup_dir);
                 draw_text(4, buf, white);
+                mkdir(backup_dir, 0777);
                 ret = copydir(save_dir, backup_dir);
                 PASS_OR_MOVE(5, DUMPER_SLOT_SELECT);
                 WAIT_AND_MOVE(7, DUMPER_SLOT_SELECT);
@@ -491,6 +493,12 @@ int dumper_main() {
                 clear_screen();
                 draw_text(0, version_string, white);
                 draw_text(2, "DO NOT CLOSE APPLICATION MANUALLY!", red);
+
+                if (!is_dir(backup_dir)) {
+                    draw_text(4, "Cannot find save data", red);
+                    WAIT_AND_MOVE(7, DUMPER_SLOT_SELECT);
+                    break;
+                }
 
                 snprintf(buf, 256, "Importing from %s...", backup_dir);
                 draw_text(4, buf, white);
@@ -510,6 +518,12 @@ int main() {
     vita2d_init();
     init_console();
     load_config();
+
+    buf_length = strlen(config.full_path_format) + 64;
+    buf = malloc(sizeof(char) * buf_length);
+
+    mkdir(concat("ux0:", config.base), 0777);
+    sceIoMkdir("ux0:/data/savemgr", 0777);
 
     if (strcmp(app_titleid, SAVE_MANAGER) == 0) {
         injector_main();

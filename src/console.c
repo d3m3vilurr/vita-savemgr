@@ -60,7 +60,7 @@ void draw_end() {
     vita2d_swap_buffers();
 }
 
-void draw_text(uint32_t y, char* text, uint32_t color) {
+void draw_text(uint32_t y, const char* text, uint32_t color) {
     for (int i = 0; i < 3; i++){
         vita2d_start_drawing();
         vita2d_pgf_draw_text(debug_font, 2, (y + 1) * ROW_HEIGHT, color, 1.0, text);
@@ -68,7 +68,7 @@ void draw_text(uint32_t y, char* text, uint32_t color) {
     }
 }
 
-void draw_loop_text(uint32_t y, char *text, uint32_t color) {
+void draw_loop_text(uint32_t y, const char *text, uint32_t color) {
     vita2d_pgf_draw_text(debug_font, 2, (y + 1) * ROW_HEIGHT, color, 1.0, text);
 }
 
@@ -78,4 +78,3 @@ void clear_screen() {
         draw_end();
     }
 }
-

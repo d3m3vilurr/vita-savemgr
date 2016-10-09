@@ -4,6 +4,7 @@
 int exists(const char *path);
 int is_dir(const char *path);
 
+int mkdir(const char *path, int mode);
 int rmdir(const char *path);
 int mvdir(const char *src, const char *dest);
 int copydir(const char *src, const char *dest);

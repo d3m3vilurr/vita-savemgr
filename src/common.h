@@ -17,7 +17,10 @@
 #define red   RGBA8(0xFF, 0x00, 0x00, 0xFF)
 
 #define TEMP_FILE   "ux0:data/savemgr/tmp"
-#define CONFIG_FILE "ux0:data/savemgr/config"
+#define CONFIG_FILE "ux0:data/savemgr/config.ini"
+
+#define DEFAULT_BASE_SAVEDIR "/data/rinCheat"
+#define DEFAULT_SAVE_SLOT_FORMAT "%s_SAVEDATA_SLOT%d"
 
 #define SCE_CTRL_HOLD 0x80000000
 
