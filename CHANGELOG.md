@@ -1,7 +1,11 @@
 ## Unreleased
+
+## 0.7.0
 - Support device confirmation button & fix text grammers (#16)
 - Use icon for button information instead text
 - Support left analog & up/down hold for select item
+- Support multiple save dump slots
+- Support configure
 
 ## 0.6.0
 - Fix broken import process of 0.5.0
