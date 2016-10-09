@@ -33,16 +33,21 @@ set(CMAKE_C_FLAGS "-Wl,-q -Wall -O3 -std=c99")
 
 include_directories(
     sqlite3
+    extern/inih
 )
 
 add_executable(${PROJECT_NAME}.elf
+    src/console.c
     src/appdb.c
     src/file.c
     src/font.c
+    src/button.c
+    src/config.c
     src/main.c
     src/vita_sqlite.c
 
     sqlite3/sqlite3.c
+    extern/inih/ini.c
 )
 
 target_link_libraries(${PROJECT_NAME}.elf
