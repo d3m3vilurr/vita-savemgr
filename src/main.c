@@ -43,6 +43,13 @@ int btn;
 char *buf;
 int buf_length;
 
+char *concat(const char *str1, const char *str2) {
+    char tmp[buf_length];
+    snprintf(tmp, buf_length, "%s%s", str1, str2);
+    memcpy(buf, tmp, buf_length);
+    return buf;
+}
+
 int launch(const char *titleid) {
     char uri[32];
     sprintf(uri, "psgm:play?titleid=%s", titleid);
@@ -122,11 +129,51 @@ exit:
     return ret;
 }
 
-char *concat(const char *str1, const char *str2) {
-    char tmp[buf_length];
-    snprintf(tmp, buf_length, "%s%s", str1, str2);
-    memcpy(buf, tmp, buf_length);
-    return buf;
+int migrate_simple_rincheat_save() {
+    char rindir_format[256];
+    char old_savedir[256];
+    snprintf(rindir_format, 256, "ux0:%s/%s",
+             OLD_RINCHEAT_SAVEDIR, OLD_RINCHEAT_SAVE_FORMAT);
+    snprintf(old_savedir, 256, rindir_format, app_titleid);
+    if (!is_dir(old_savedir)) {
+        return 0;
+    }
+    char new_dir[buf_length];
+    for (int i = 0; i < 10; i++) {
+        snprintf(new_dir, buf_length, config.full_path_format, app_titleid, i);
+        if (is_dir(new_dir)) {
+            continue;
+        }
+        mvdir(old_savedir, new_dir);
+        return 1;
+    }
+    // TODO remove older remain save
+    return -1;
+}
+
+int migrate_rincheat_slot_saves() {
+    char rindir_format[256];
+    char old_savedir[256];
+    char new_dir[buf_length];
+    snprintf(rindir_format, 256, "ux0:%s/%s",
+             OLD_RINCHEAT_SAVEDIR, OLD_RINCHEAT_SAVE_SLOT_FORMAT);
+    for (int i = 0; i < 10; i++) {
+        snprintf(old_savedir, 256, rindir_format, app_titleid, i);
+        if (!is_dir(old_savedir)) {
+            continue;
+        }
+        for (int j = 0; j < 10; j++) {
+            snprintf(new_dir, buf_length,
+                     config.full_path_format, app_titleid, j);
+            if (is_dir(new_dir)) {
+                continue;
+            }
+            mvdir(old_savedir, new_dir);
+            break;
+        }
+    }
+    // TODO remove older remain saves
+    return -1;
 }
 
 void print_game_list(appinfo *head, appinfo *tail, appinfo *curr) {
@@ -423,6 +470,12 @@ int dumper_main() {
         sprintf(save_dir, "savedata0:");
     } else {
         sprintf(save_dir, "ux0:user/00/savedata/%s", info.real_id);
+    }
+
+    migrate_rincheat_slot_saves();
+    if (strcmp(config.base, OLD_RINCHEAT_SAVEDIR) != 0 ||
+            strcmp(config.slot_format, OLD_RINCHEAT_SAVE_SLOT_FORMAT) != 0) {
+        migrate_simple_rincheat_save();
     }
 
     int slot = 0;
