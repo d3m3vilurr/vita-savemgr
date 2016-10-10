@@ -1,4 +1,6 @@
 ## Unreleased
+- Change default directories to `ux0:/data/savegames`
+- Auto migrate older directories
 
 ## 0.7.0
 - Support device confirmation button & fix text grammers (#16)

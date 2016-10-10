@@ -21,18 +21,12 @@ If you want to use another dump directory format, make simple `config.ini` file 
 base=/data/savegames
 slot_format=%s_SLOT%d
 ```
-- use `ux0:data/savegames/PCSH00000/SLOT_0`
+
+Default config like this; it will save to `ux0:data/savegames/PCSH00000/SLOT0`
 
 ```ini
 base=/data/savegames
-slot_format=%s/SLOT_%d
-```
-
-Default config like this
-
-```ini
-base=/data/rinCheat
-slot_format=%s_SAVEDATA_SLOT%d
+slot_format=%s/SLOT%d
 ```
 
 ## Emergency guide
