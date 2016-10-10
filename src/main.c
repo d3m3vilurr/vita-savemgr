@@ -43,6 +43,13 @@ int btn;
 char *buf;
 int buf_length;
 
+char *concat(const char *str1, const char *str2) {
+    char tmp[buf_length];
+    snprintf(tmp, buf_length, "%s%s", str1, str2);
+    memcpy(buf, tmp, buf_length);
+    return buf;
+}
+
 int launch(const char *titleid) {
     char uri[32];
     sprintf(uri, "psgm:play?titleid=%s", titleid);
@@ -120,13 +127,6 @@ int cleanup_prev_inject(applist *list) {
 exit:
     draw_end();
     return ret;
-}
-
-char *concat(const char *str1, const char *str2) {
-    char tmp[buf_length];
-    snprintf(tmp, buf_length, "%s%s", str1, str2);
-    memcpy(buf, tmp, buf_length);
-    return buf;
 }
 
 void print_game_list(appinfo *head, appinfo *tail, appinfo *curr) {
