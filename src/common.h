@@ -19,10 +19,11 @@
 #define TEMP_FILE   "ux0:data/savemgr/tmp"
 #define CONFIG_FILE "ux0:data/savemgr/config.ini"
 
-#define OLD_RINCHEAT_SAVEDIR "/data/rinCheat"
-#define OLD_RINCHEAT_SAVE_FORMAT "%s_SAVEDATA"
-#define DEFAULT_BASE_SAVEDIR "/data/savegames"
-#define DEFAULT_SAVE_SLOT_FORMAT "%s/SLOT%d"
+#define OLD_RINCHEAT_SAVEDIR          "/data/rinCheat"
+#define OLD_RINCHEAT_SAVE_FORMAT      "%s_SAVEDATA"
+#define OLD_RINCHEAT_SAVE_SLOT_FORMAT "%s_SAVEDATA_SLOT_%d"
+#define DEFAULT_BASE_SAVEDIR          "/data/savegames"
+#define DEFAULT_SAVE_SLOT_FORMAT      "%s/SLOT%d"
 
 #define SCE_CTRL_HOLD 0x80000000
 
