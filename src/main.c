@@ -35,6 +35,7 @@ enum {
     DUMPER_SLOT_SELECT,
     DUMPER_EXPORT,
     DUMPER_IMPORT,
+    DUMPER_DROP,
     DUMPER_EXIT,
 };
 
@@ -521,13 +522,15 @@ int dumper_main() {
                 draw_loop_text(4, concat("SELECT: ", buf), white);
                 draw_loop_text(5, concat("SAVE DIR: ", backup_dir), white);
 
-                draw_loop_text(24, concat(ICON_ENTER, " - Export"), white);
-                draw_loop_text(25, concat(ICON_TRIANGLE, " - Import"), white);
+                draw_loop_text(23, concat(ICON_ENTER, " - Export"), white);
+                draw_loop_text(24, concat(ICON_TRIANGLE, " - Import"), white);
+                draw_loop_text(25, concat(ICON_SQUARE, " - Drop"), white);
                 draw_loop_text(26, concat(ICON_CANCEL, " - Return to Select Slot"), white);
                 btn = read_btn();
                 if (btn & SCE_CTRL_HOLD) break;
                 if (btn & SCE_CTRL_ENTER) state = DUMPER_EXPORT;
                 if (btn & SCE_CTRL_TRIANGLE) state = DUMPER_IMPORT;
+                if (btn & SCE_CTRL_SQUARE) state = DUMPER_DROP;
                 if (btn & SCE_CTRL_CANCEL) state = DUMPER_MAIN;
                 break;
             case DUMPER_EXPORT:
@@ -556,6 +559,24 @@ int dumper_main() {
                 snprintf(buf, 256, "Importing from %s...", backup_dir);
                 draw_text(4, buf, white);
                 ret = copydir(backup_dir, "savedata0:");
+                PASS_OR_MOVE(5, DUMPER_SLOT_SELECT);
+                WAIT_AND_MOVE(7, DUMPER_SLOT_SELECT);
+                break;
+            case DUMPER_DROP:
+                clear_screen();
+
+                draw_text(0, version_string, white);
+                draw_text(2, "DO NOT CLOSE APPLICATION MANUALLY!", red);
+
+                if (!is_dir(backup_dir)) {
+                    draw_text(4, "Cannot find save data", red);
+                    WAIT_AND_MOVE(7, DUMPER_SLOT_SELECT);
+                    break;
+                }
+
+                snprintf(buf, 256, "Remove %s...", backup_dir);
+                draw_text(4, buf, white);
+                ret = rmdir(backup_dir);
                 PASS_OR_MOVE(5, DUMPER_SLOT_SELECT);
                 WAIT_AND_MOVE(7, DUMPER_SLOT_SELECT);
                 break;
