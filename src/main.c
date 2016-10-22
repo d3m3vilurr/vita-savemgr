@@ -238,6 +238,17 @@ void print_save_slots(int curr_slot) {
     } \
     draw_text((row), "Done", green);
 
+#define DO_NOT_CLOSE_POPUP() \
+    do { \
+        const char *lines[] = { \
+            "", \
+            "DO NOT CLOSE APPLICATION MANUALLY!", \
+            "", \
+            NULL, \
+        }; \
+        open_popup(WARNING, lines); \
+    } while (0)
+
 int injector_main() {
     char version_string[256];
     snprintf(version_string, 256, "Vita Save Manager %s", VERSION);
@@ -272,18 +283,20 @@ int injector_main() {
 
     cleanup_prev_inject(&list);
 
+#define draw_game_list() \
+    do { \
+        draw_loop_text(0, version_string, white); \
+        print_game_list(head, tail, curr); \
+        draw_loop_text(25, concat(ICON_UPDOWN, " - Select Item"), white); \
+        draw_loop_text(26, concat(ICON_CANCEL, " - Exit"), white); \
+    } while (0)
+
     while (1) {
         draw_start();
 
         switch (state) {
             case INJECTOR_MAIN:
-                draw_loop_text(0, version_string, white);
-
-                print_game_list(head, tail, curr);
-
-                draw_loop_text(24, concat(ICON_UPDOWN, " - Select Item"), white);
-                draw_loop_text(25, concat(ICON_ENTER, " - Confirm"), white);
-                draw_loop_text(26, concat(ICON_CANCEL, " - Exit"), white);
+                draw_game_list();
 
                 btn = read_btn();
                 if (btn & SCE_CTRL_ENTER) {
@@ -312,15 +325,20 @@ int injector_main() {
                 }
                 break;
             case INJECTOR_TITLE_SELECT:
-                draw_loop_text(0, version_string, white);
-                snprintf(buf, 255, "TITLE: %s", curr->title);
-                draw_loop_text(2, buf, white);
-                snprintf(buf, 255, "TITLE_ID: %s", curr->title_id);
-                draw_loop_text(3, buf, white);
+                draw_game_list();
 
-                draw_loop_text(25, concat(ICON_ENTER, " - Start Dumper"), white);
-                draw_loop_text(26, concat(ICON_CANCEL, " - Return to Main Menu"), white);
+                do {
+                    const char *lines[] = {
+                        "Start save dumper?",
+                        "",
+                        "Selected:",
+                        curr->title_id,
+                        curr->title,
+                        NULL,
+                    };
 
+                    draw_popup(CONFIRM_AND_CANCEL, lines);
+                } while (0);
 
                 btn = read_btn();
                 if (btn & SCE_CTRL_HOLD) {
@@ -411,10 +429,12 @@ int injector_main() {
                 sceIoWrite(fd, curr, sizeof(appinfo));
                 sceIoClose(fd);
 
-                draw_text(13, "DO NOT CLOSE APPLICATION MANUALLY!", red);
+                DO_NOT_CLOSE_POPUP();
 
                 // wait 3sec
                 sceKernelDelayThread(3000000);
+
+                close_popup();
 
                 draw_text(15, "Starting dumper...", green);
 
