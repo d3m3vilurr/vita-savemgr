@@ -14,7 +14,7 @@
 #define SCREEN_ROW      27
 #define ROW_HEIGHT      20
 
-static vita2d_pgf* debug_font;
+static vita2d_pgf* font;
 
 int SCE_CTRL_ENTER;
 int SCE_CTRL_CANCEL;
@@ -25,7 +25,7 @@ char ICON_CANCEL[4];
 void init_console() {
     vita2d_set_clear_color(black);
 
-    debug_font = load_system_fonts();
+    font = load_system_fonts();
 
     SceAppUtilInitParam init_param = {0};
     SceAppUtilBootParam boot_param = {0};
@@ -63,13 +63,13 @@ void draw_end() {
 void draw_text(uint32_t y, const char* text, uint32_t color) {
     for (int i = 0; i < 3; i++){
         vita2d_start_drawing();
-        vita2d_pgf_draw_text(debug_font, 2, (y + 1) * ROW_HEIGHT, color, 1.0, text);
+        vita2d_pgf_draw_text(font, 2, (y + 1) * ROW_HEIGHT, color, 1.0, text);
         draw_end();
     }
 }
 
 void draw_loop_text(uint32_t y, const char *text, uint32_t color) {
-    vita2d_pgf_draw_text(debug_font, 2, (y + 1) * ROW_HEIGHT, color, 1.0, text);
+    vita2d_pgf_draw_text(font, 2, (y + 1) * ROW_HEIGHT, color, 1.0, text);
 }
 
 void clear_screen() {
