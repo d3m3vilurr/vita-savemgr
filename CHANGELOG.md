@@ -3,6 +3,7 @@
 - Auto migrate older directories
 - Support drop save slot
 - Support confirm popups
+- Support format savedata (L+R trigger on dumper main menu)
 
 ## 0.7.0
 - Support device confirmation button & fix text grammers (#16)

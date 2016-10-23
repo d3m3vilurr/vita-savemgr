@@ -111,6 +111,56 @@ int rmdir(const char *path) {
     return 1;
 }
 
+int rm_savedir(const char *path) {
+    SceUID dfd = sceIoDopen(path);
+    if (dfd < 0) {
+        int ret = sceIoRemove(path);
+        if (ret < 0)
+            return ret;
+    }
+    int res = 0;
+
+    do {
+        SceIoDirent dir;
+        memset(&dir, 0, sizeof(SceIoDirent));
+
+        res = sceIoDread(dfd, &dir);
+        if (res > 0) {
+            if (strcmp(dir.d_name, ".") == 0 || strcmp(dir.d_name, "..") == 0)
+                continue;
+            // key dir
+            if (strcmp(dir.d_name, "sce_pfs") == 0 ||
+                    strcmp(dir.d_name, "sce_sys") == 0)
+                continue;
+
+            char *new_path = malloc(strlen(path) + strlen(dir.d_name) + 2);
+            snprintf(new_path, 1024, "%s/%s", path, dir.d_name);
+
+            if (SCE_S_ISDIR(dir.d_stat.st_mode)) {
+                int ret = rmdir(new_path);
+                if (ret <= 0) {
+                    free(new_path);
+                    sceIoDclose(dfd);
+                    return ret;
+                }
+            } else {
+                int ret = sceIoRemove(new_path);
+                if (ret < 0) {
+                    free(new_path);
+                    sceIoDclose(dfd);
+                    return ret;
+                }
+            }
+
+            free(new_path);
+        }
+    } while (res > 0);
+
+    sceIoDclose(dfd);
+
+    return 1;
+}
+
 int mvdir(const char *src, const char *dest) {
     if (strcasecmp(src, dest) == 0) {
         return -1;
