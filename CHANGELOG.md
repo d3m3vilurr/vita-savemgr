@@ -2,6 +2,7 @@
 - Change default directories to `ux0:/data/savegames`
 - Auto migrate older directories
 - Support drop save slot
+- Support confirm popups
 
 ## 0.7.0
 - Support device confirmation button & fix text grammers (#16)
