@@ -222,22 +222,6 @@ void print_save_slots(int curr_slot) {
     }
 }
 
-#define WAIT_AND_MOVE(row, next) \
-    draw_text((row), concat("Please press ", ICON_ENTER), green); \
-    do { \
-        btn = read_btn(); \
-    } while ((btn & SCE_CTRL_HOLD) != 0 || (btn & SCE_CTRL_ENTER) == 0); \
-    state = (next);
-
-#define PASS_OR_MOVE(row, next) \
-    if (ret < 0) { \
-        snprintf(buf, 256, "Error 0x%08X", ret); \
-        draw_text((row), buf, red); \
-        WAIT_AND_MOVE((row) + 2, (next)); \
-        break; \
-    } \
-    draw_text((row), "Done", green);
-
 #define DO_NOT_CLOSE_POPUP() \
     do { \
         popup_line lines[] = { \
