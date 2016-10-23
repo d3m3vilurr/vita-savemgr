@@ -562,10 +562,14 @@ int dumper_main() {
 
     int slot = 0;
 
+#define draw_dumper_header() \
+    draw_text(0, version_string, white); \
+    draw_text(2, "DO NOT CLOSE APPLICATION MANUALLY!", orange);
+
 #define draw_save_stot() \
     do { \
         draw_loop_text(0, version_string, white); \
-        draw_loop_text(2, "DO NOT CLOSE APPLICATION MANUALLY!", red); \
+        draw_loop_text(2, "DO NOT CLOSE APPLICATION MANUALLY!", orange); \
         print_save_slots(slot); \
         draw_loop_text(25, concat(ICON_UPDOWN, " - Select Slot"), white); \
         draw_loop_text(26, concat(ICON_CANCEL, " - Exit"), white); \
@@ -629,50 +633,75 @@ int dumper_main() {
                 break;
             case DUMPER_EXPORT:
                 clear_screen();
-                draw_text(0, version_string, white);
-                draw_text(2, "DO NOT CLOSE APPLICATION MANUALLY!", red);
+                draw_dumper_header();
 
                 snprintf(buf, 256, "Exporting to %s...", backup_dir);
                 draw_text(4, buf, white);
                 mkdir(backup_dir, 0777);
                 ret = copydir(save_dir, backup_dir);
-                PASS_OR_MOVE(5, DUMPER_SLOT_SELECT);
-                WAIT_AND_MOVE(7, DUMPER_SLOT_SELECT);
+
+                if (ret < 0) {
+                    ERROR_CODE_POPUP(ret);
+                    state = DUMPER_SLOT_SELECT;
+                    break;
+                }
+                draw_text(5, "Done", green);
+
+                // wait 1sec
+                sceKernelDelayThread(1000000);
+
+                state = DUMPER_SLOT_SELECT;
                 break;
             case DUMPER_IMPORT:
                 clear_screen();
-                draw_text(0, version_string, white);
-                draw_text(2, "DO NOT CLOSE APPLICATION MANUALLY!", red);
+                draw_dumper_header();
 
                 if (!is_dir(backup_dir)) {
-                    draw_text(4, "Cannot find save data", red);
-                    WAIT_AND_MOVE(7, DUMPER_SLOT_SELECT);
+                    ERROR_POPUP("Cannot find save data");
+                    state = DUMPER_SLOT_SELECT;
                     break;
                 }
 
                 snprintf(buf, 256, "Importing from %s...", backup_dir);
                 draw_text(4, buf, white);
                 ret = copydir(backup_dir, "savedata0:");
-                PASS_OR_MOVE(5, DUMPER_SLOT_SELECT);
-                WAIT_AND_MOVE(7, DUMPER_SLOT_SELECT);
+
+                if (ret < 0) {
+                    ERROR_CODE_POPUP(ret);
+                    state = DUMPER_SLOT_SELECT;
+                    break;
+                }
+                draw_text(5, "Done", green);
+
+                // wait 1sec
+                sceKernelDelayThread(1000000);
+
+                state = DUMPER_SLOT_SELECT;
                 break;
             case DUMPER_DROP:
                 clear_screen();
-
-                draw_text(0, version_string, white);
-                draw_text(2, "DO NOT CLOSE APPLICATION MANUALLY!", red);
+                draw_dumper_header();
 
                 if (!is_dir(backup_dir)) {
-                    draw_text(4, "Cannot find save data", red);
-                    WAIT_AND_MOVE(7, DUMPER_SLOT_SELECT);
+                    ERROR_POPUP("Cannot find save data");
+                    state = DUMPER_SLOT_SELECT;
                     break;
                 }
 
                 snprintf(buf, 256, "Remove %s...", backup_dir);
                 draw_text(4, buf, white);
                 ret = rmdir(backup_dir);
-                PASS_OR_MOVE(5, DUMPER_SLOT_SELECT);
-                WAIT_AND_MOVE(7, DUMPER_SLOT_SELECT);
+                if (ret < 0) {
+                    ERROR_CODE_POPUP(ret);
+                    state = DUMPER_SLOT_SELECT;
+                    break;
+                }
+                draw_text(5, "Done", green);
+
+                // wait 1sec
+                sceKernelDelayThread(1000000);
+
+                state = DUMPER_SLOT_SELECT;
                 break;
             case DUMPER_EXIT:
                 launch(SAVE_MANAGER);
