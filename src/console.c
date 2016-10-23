@@ -35,6 +35,8 @@ char ICON_CANCEL[4];
 
 char confirm_msg[256];
 int confirm_msg_width;
+char close_msg[256];
+int close_msg_width;
 
 void init_console() {
     vita2d_set_clear_color(black);
@@ -64,6 +66,9 @@ void init_console() {
 
     snprintf(confirm_msg, 256, "%s Cancel    %s Confirm", ICON_CANCEL, ICON_ENTER);
     confirm_msg_width = vita2d_pgf_text_width(font, 1.0, confirm_msg);
+
+    snprintf(close_msg, 256, "%s Close", ICON_ENTER);
+    close_msg_width = vita2d_pgf_text_width(font, 1.0, close_msg);
 }
 
 void draw_start() {
@@ -153,6 +158,10 @@ void draw_popup(popup_type type, const char *lines[]) {
             line = orange;
             height = cnt * ROW_HEIGHT;
             break;
+        case ERROR:
+            line = red;
+            height = (cnt + 2) * ROW_HEIGHT;
+            break;
         default:
             line = white;
             height = cnt * ROW_HEIGHT;
@@ -175,6 +184,14 @@ void draw_popup(popup_type type, const char *lines[]) {
                                  white,
                                  1.0,
                                  confirm_msg);
+            break;
+        case ERROR:
+            vita2d_pgf_draw_text(font,
+                                 SCREEN_HALF_WIDTH - (close_msg_width / 2),
+                                 p.y + ((cnt + 2) * ROW_HEIGHT),
+                                 white,
+                                 1.0,
+                                 close_msg);
             break;
         default:
             break;

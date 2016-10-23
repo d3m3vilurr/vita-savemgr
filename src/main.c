@@ -249,6 +249,43 @@ void print_save_slots(int curr_slot) {
         open_popup(WARNING, lines); \
     } while (0)
 
+#define ERROR_POPUP(msg) \
+    do { \
+        const char *lines[] = { \
+            "", \
+            (msg), \
+            "", \
+            NULL, \
+        }; \
+        open_popup(ERROR, lines); \
+    } while (0); \
+    do { \
+        btn = read_btn(); \
+    } while (btn != SCE_CTRL_ENTER); \
+    close_popup()
+
+#define ERROR_POPUP2(msg1, msg2) \
+    do { \
+        const char *lines[] = { \
+            "", \
+            (msg1), \
+            (msg2), \
+            "", \
+            NULL, \
+        }; \
+        open_popup(ERROR, lines); \
+    } while (0); \
+    do { \
+        btn = read_btn(); \
+    } while (btn != SCE_CTRL_ENTER); \
+    close_popup()
+
+#define ERROR_CODE_POPUP(code) \
+    do { \
+        snprintf(buf, 256, "Error 0x%08X", ret); \
+        ERROR_POPUP(buf); \
+    } while (0)
+
 int injector_main() {
     char version_string[256];
     snprintf(version_string, 256, "Vita Save Manager %s", VERSION);
@@ -356,12 +393,13 @@ int injector_main() {
                 // cartridge & digital encrypted games
                 if (!exists(curr->eboot)) {
                     if (strcmp(curr->dev, "gro0") == 0) {
-                        draw_text(2, "Cartridge not inserted", red);
+                        //draw_text(2, "Cartridge not inserted", red);
+                        ERROR_POPUP("Cartridge not inserted");
                     } else {
-                        draw_text(2, "Cannot find game", red);
+                        //draw_text(2, "Cannot find game", red);
+                        ERROR_POPUP("Cannot find game");
                     }
-
-                    WAIT_AND_MOVE(4, INJECTOR_TITLE_SELECT);
+                    state = INJECTOR_MAIN;
                     break;
                 }
 
@@ -378,7 +416,12 @@ int injector_main() {
                         draw_text(4, buf, white);
                         rmdir(backup);
                         ret = mvdir(patch, backup);
-                        PASS_OR_MOVE(5, INJECTOR_TITLE_SELECT);
+                        if (ret < 0) {
+                            ERROR_CODE_POPUP(ret);
+                            state = INJECTOR_MAIN;
+                            break;
+                        }
+                        draw_text(5, "Done", green);
                     }
 
                     // inject dumper to patch
@@ -386,7 +429,12 @@ int injector_main() {
                     draw_text(7, buf, white);
                     ret = copydir("ux0:app/SAVEMGR00", patch);
                     // TODO restore patch
-                    PASS_OR_MOVE(8, INJECTOR_TITLE_SELECT);
+                    if (ret < 0) {
+                        ERROR_CODE_POPUP(ret);
+                        state = INJECTOR_MAIN;
+                        break;
+                    }
+                    draw_text(8, "Done", green);
 
                     snprintf(patch, 255, "ux0:patch/%s/sce_sys/param.sfo", curr->title_id);
                     //Restoring or Copying?
@@ -396,29 +444,46 @@ int injector_main() {
                     snprintf(buf, 255, "%s:app/%s/sce_sys/param.sfo", curr->dev, curr->title_id);
                     ret = copyfile(buf, patch);
 
-                    PASS_OR_MOVE(11, INJECTOR_TITLE_SELECT);
+                    if (ret < 0) {
+                        ERROR_CODE_POPUP(ret);
+                        state = INJECTOR_MAIN;
+                        break;
+                    }
+                    draw_text(11, "Done", green);
                 } else {
                     draw_text(2, "Injecting (decrypted game)...", white);
                     ret = -1;
 
                     if (strcmp(curr->dev, "gro0") == 0) {
-                        draw_text(4, "Game not supported", red);
-                        draw_text(5, "Please send a bug report on github", white);
-
-                        PASS_OR_MOVE(7, INJECTOR_TITLE_SELECT);
+                        ERROR_POPUP2("Game not supported", "Please send a bug report on github");
+                        state = INJECTOR_MAIN;
+                        break;
                     }
+
                     // vitamin or digital
                     snprintf(backup, 256, "%s.orig", curr->eboot);
                     snprintf(buf, 255, "Backing up %s to %s...", curr->eboot, backup);
                     draw_text(4, buf, white);
                     ret = sceIoRename(curr->eboot, backup);
-                    PASS_OR_MOVE(5, INJECTOR_TITLE_SELECT);
+
+                    if (ret < 0) {
+                        ERROR_CODE_POPUP(ret);
+                        state = INJECTOR_MAIN;
+                        break;
+                    }
+                    draw_text(5, "Done", green);
 
                     snprintf(buf, 255, "Installing dumper to %s...", curr->eboot);
                     draw_text(7, buf, white);
                     ret = copyfile("ux0:app/SAVEMGR00/eboot.bin", curr->eboot);
                     // TODO if error, need restore eboot
-                    PASS_OR_MOVE(8, INJECTOR_TITLE_SELECT);
+
+                    if (ret < 0) {
+                        ERROR_CODE_POPUP(ret);
+                        state = INJECTOR_MAIN;
+                        break;
+                    }
+                    draw_text(8, "Done", green);
                 }
 
                 // backup for next cleanup

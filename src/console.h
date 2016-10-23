@@ -4,6 +4,7 @@
 typedef enum {
     NONE,
     WARNING,
+    ERROR,
     CONFIRM_AND_CANCEL,
 } popup_type;
 
