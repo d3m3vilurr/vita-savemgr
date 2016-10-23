@@ -299,11 +299,11 @@ int injector_main() {
                 draw_game_list();
 
                 btn = read_btn();
-                if (btn & SCE_CTRL_ENTER) {
+                if (btn == SCE_CTRL_ENTER) {
                     state = INJECTOR_TITLE_SELECT;
                     break;
                 }
-                if (btn & SCE_CTRL_CANCEL && (btn & SCE_CTRL_HOLD) == 0) {
+                if (btn == SCE_CTRL_CANCEL) {
                     state = INJECTOR_EXIT;
                     break;
                 }
@@ -341,12 +341,9 @@ int injector_main() {
                 } while (0);
 
                 btn = read_btn();
-                if (btn & SCE_CTRL_HOLD) {
-                    break;
-                }
-                if (btn & SCE_CTRL_ENTER) {
+                if (btn == SCE_CTRL_ENTER) {
                     state = INJECTOR_START_DUMPER;
-                } else if (btn & SCE_CTRL_CANCEL) {
+                } else if (btn == SCE_CTRL_CANCEL) {
                     state = INJECTOR_MAIN;
                 }
                 break;
