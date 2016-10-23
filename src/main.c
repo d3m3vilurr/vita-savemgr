@@ -527,8 +527,8 @@ int dumper_main() {
     if (fd < 0) {
         draw_start();
 
-        draw_text(0, "Cannot find inject data", red);
-        WAIT_AND_MOVE(2, DUMPER_EXIT);
+        ERROR_POPUP("Cannot find inject data");
+        state = DUMPER_EXIT;
 
         draw_end();
         launch(SAVE_MANAGER);
@@ -541,8 +541,8 @@ int dumper_main() {
     if (strcmp(info.title_id, app_titleid) != 0) {
         draw_start();
 
-        draw_text(0, "Wrong inject information", red);
-        WAIT_AND_MOVE(2, DUMPER_EXIT);
+        ERROR_POPUP("Wrong inject information");
+        state = DUMPER_EXIT;
 
         draw_end();
         launch(SAVE_MANAGER);
@@ -562,6 +562,16 @@ int dumper_main() {
     }
 
     int slot = 0;
+
+#define draw_save_stot() \
+    do { \
+        draw_loop_text(0, version_string, white); \
+        draw_loop_text(2, "DO NOT CLOSE APPLICATION MANUALLY!", red); \
+        print_save_slots(slot); \
+        draw_loop_text(25, concat(ICON_UPDOWN, " - Select Slot"), white); \
+        draw_loop_text(26, concat(ICON_CANCEL, " - Exit"), white); \
+    } while (0)
+
     while (1) {
         draw_start();
 
@@ -569,14 +579,7 @@ int dumper_main() {
 
         switch (state) {
             case DUMPER_MAIN:
-                draw_loop_text(0, version_string, white);
-                draw_loop_text(2, "DO NOT CLOSE APPLICATION MANUALLY!", red);
-
-                print_save_slots(slot);
-
-                draw_loop_text(24, concat(ICON_UPDOWN, " - Select Slot"), white);
-                draw_loop_text(25, concat(ICON_ENTER, " - Confirm"), white);
-                draw_loop_text(26, concat(ICON_CANCEL, " - Exit"), white);
+                draw_save_stot();
 
                 btn = read_btn();
 
