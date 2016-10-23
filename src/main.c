@@ -222,21 +222,52 @@ void print_save_slots(int curr_slot) {
     }
 }
 
-#define WAIT_AND_MOVE(row, next) \
-    draw_text((row), concat("Please press ", ICON_ENTER), green); \
+#define DO_NOT_CLOSE_POPUP() \
+    do { \
+        popup_line lines[] = { \
+            {.string="DO NOT CLOSE APPLICATION MANUALLY!", \
+             .padding={20, 0, 20, 0}, .color=orange}, \
+            {0}, \
+        }; \
+        open_popup(WARNING, lines); \
+    } while (0)
+
+#define ERROR_POPUP(msg) \
+    do { \
+        popup_line lines[] = { \
+            {.string=""}, \
+            {.string=(msg), .color=red}, \
+            {.string=""}, \
+            {0}, \
+        }; \
+        open_popup(ERROR, lines); \
+    } while (0); \
     do { \
         btn = read_btn(); \
-    } while ((btn & SCE_CTRL_HOLD) != 0 || (btn & SCE_CTRL_ENTER) == 0); \
-    state = (next);
+    } while (btn != SCE_CTRL_ENTER); \
+    close_popup()
 
-#define PASS_OR_MOVE(row, next) \
-    if (ret < 0) { \
+#define ERROR_POPUP2(msg1, msg2) \
+    do { \
+        popup_line lines[] = { \
+            {.string=""}, \
+            {.string=(msg1), .color=red}, \
+            {.string=(msg2), .color=white}, \
+            {.string=""}, \
+            {0}, \
+        }; \
+        open_popup(ERROR, lines); \
+    } while (0); \
+    do { \
+        btn = read_btn(); \
+    } while (btn != SCE_CTRL_ENTER); \
+    close_popup()
+
+#define ERROR_CODE_POPUP(code) \
+    do { \
         snprintf(buf, 256, "Error 0x%08X", ret); \
-        draw_text((row), buf, red); \
-        WAIT_AND_MOVE((row) + 2, (next)); \
-        break; \
-    } \
-    draw_text((row), "Done", green);
+        ERROR_POPUP(buf); \
+    } while (0)
 
 int injector_main() {
     char version_string[256];
@@ -272,25 +303,27 @@ int injector_main() {
 
     cleanup_prev_inject(&list);
 
+#define draw_game_list() \
+    do { \
+        draw_loop_text(0, version_string, white); \
+        print_game_list(head, tail, curr); \
+        draw_loop_text(25, concat(ICON_UPDOWN, " - Select Item"), white); \
+        draw_loop_text(26, concat(ICON_CANCEL, " - Exit"), white); \
+    } while (0)
+
     while (1) {
         draw_start();
 
         switch (state) {
             case INJECTOR_MAIN:
-                draw_loop_text(0, version_string, white);
-
-                print_game_list(head, tail, curr);
-
-                draw_loop_text(24, concat(ICON_UPDOWN, " - Select Item"), white);
-                draw_loop_text(25, concat(ICON_ENTER, " - Confirm"), white);
-                draw_loop_text(26, concat(ICON_CANCEL, " - Exit"), white);
+                draw_game_list();
 
                 btn = read_btn();
-                if (btn & SCE_CTRL_ENTER) {
+                if (btn == SCE_CTRL_ENTER) {
                     state = INJECTOR_TITLE_SELECT;
                     break;
                 }
-                if (btn & SCE_CTRL_CANCEL && (btn & SCE_CTRL_HOLD) == 0) {
+                if (btn == SCE_CTRL_CANCEL) {
                     state = INJECTOR_EXIT;
                     break;
                 }
@@ -312,23 +345,25 @@ int injector_main() {
                 }
                 break;
             case INJECTOR_TITLE_SELECT:
-                draw_loop_text(0, version_string, white);
-                snprintf(buf, 255, "TITLE: %s", curr->title);
-                draw_loop_text(2, buf, white);
-                snprintf(buf, 255, "TITLE_ID: %s", curr->title_id);
-                draw_loop_text(3, buf, white);
+                draw_game_list();
 
-                draw_loop_text(25, concat(ICON_ENTER, " - Start Dumper"), white);
-                draw_loop_text(26, concat(ICON_CANCEL, " - Return to Main Menu"), white);
+                do {
+                    popup_line lines[] = {
+                        {.string="Start save dumper?", .color=green},
+                        {.string=""},
+                        {.string="Selected:", .color=white},
+                        {.string=curr->title_id, .padding={0, 0, 0, 20}, .color=white},
+                        {.string=curr->title, .padding={0, 0, 0, 20}, .color=white},
+                        {0},
+                    };
 
+                    draw_popup(CONFIRM_AND_CANCEL, lines);
+                } while (0);
 
                 btn = read_btn();
-                if (btn & SCE_CTRL_HOLD) {
-                    break;
-                }
-                if (btn & SCE_CTRL_ENTER) {
+                if (btn == SCE_CTRL_ENTER) {
                     state = INJECTOR_START_DUMPER;
-                } else if (btn & SCE_CTRL_CANCEL) {
+                } else if (btn == SCE_CTRL_CANCEL) {
                     state = INJECTOR_MAIN;
                 }
                 break;
@@ -341,12 +376,13 @@ int injector_main() {
                 // cartridge & digital encrypted games
                 if (!exists(curr->eboot)) {
                     if (strcmp(curr->dev, "gro0") == 0) {
-                        draw_text(2, "Cartridge not inserted", red);
+                        //draw_text(2, "Cartridge not inserted", red);
+                        ERROR_POPUP("Cartridge not inserted");
                     } else {
-                        draw_text(2, "Cannot find game", red);
+                        //draw_text(2, "Cannot find game", red);
+                        ERROR_POPUP("Cannot find game");
                     }
-
-                    WAIT_AND_MOVE(4, INJECTOR_TITLE_SELECT);
+                    state = INJECTOR_MAIN;
                     break;
                 }
 
@@ -363,7 +399,12 @@ int injector_main() {
                         draw_text(4, buf, white);
                         rmdir(backup);
                         ret = mvdir(patch, backup);
-                        PASS_OR_MOVE(5, INJECTOR_TITLE_SELECT);
+                        if (ret < 0) {
+                            ERROR_CODE_POPUP(ret);
+                            state = INJECTOR_MAIN;
+                            break;
+                        }
+                        draw_text(5, "Done", green);
                     }
 
                     // inject dumper to patch
@@ -371,7 +412,12 @@ int injector_main() {
                     draw_text(7, buf, white);
                     ret = copydir("ux0:app/SAVEMGR00", patch);
                     // TODO restore patch
-                    PASS_OR_MOVE(8, INJECTOR_TITLE_SELECT);
+                    if (ret < 0) {
+                        ERROR_CODE_POPUP(ret);
+                        state = INJECTOR_MAIN;
+                        break;
+                    }
+                    draw_text(8, "Done", green);
 
                     snprintf(patch, 255, "ux0:patch/%s/sce_sys/param.sfo", curr->title_id);
                     //Restoring or Copying?
@@ -381,29 +427,46 @@ int injector_main() {
                     snprintf(buf, 255, "%s:app/%s/sce_sys/param.sfo", curr->dev, curr->title_id);
                     ret = copyfile(buf, patch);
 
-                    PASS_OR_MOVE(11, INJECTOR_TITLE_SELECT);
+                    if (ret < 0) {
+                        ERROR_CODE_POPUP(ret);
+                        state = INJECTOR_MAIN;
+                        break;
+                    }
+                    draw_text(11, "Done", green);
                 } else {
                     draw_text(2, "Injecting (decrypted game)...", white);
                     ret = -1;
 
                     if (strcmp(curr->dev, "gro0") == 0) {
-                        draw_text(4, "Game not supported", red);
-                        draw_text(5, "Please send a bug report on github", white);
-
-                        PASS_OR_MOVE(7, INJECTOR_TITLE_SELECT);
+                        ERROR_POPUP2("Game not supported", "Please send a bug report on github");
+                        state = INJECTOR_MAIN;
+                        break;
                     }
+
                     // vitamin or digital
                     snprintf(backup, 256, "%s.orig", curr->eboot);
                     snprintf(buf, 255, "Backing up %s to %s...", curr->eboot, backup);
                     draw_text(4, buf, white);
                     ret = sceIoRename(curr->eboot, backup);
-                    PASS_OR_MOVE(5, INJECTOR_TITLE_SELECT);
+
+                    if (ret < 0) {
+                        ERROR_CODE_POPUP(ret);
+                        state = INJECTOR_MAIN;
+                        break;
+                    }
+                    draw_text(5, "Done", green);
 
                     snprintf(buf, 255, "Installing dumper to %s...", curr->eboot);
                     draw_text(7, buf, white);
                     ret = copyfile("ux0:app/SAVEMGR00/eboot.bin", curr->eboot);
                     // TODO if error, need restore eboot
-                    PASS_OR_MOVE(8, INJECTOR_TITLE_SELECT);
+
+                    if (ret < 0) {
+                        ERROR_CODE_POPUP(ret);
+                        state = INJECTOR_MAIN;
+                        break;
+                    }
+                    draw_text(8, "Done", green);
                 }
 
                 // backup for next cleanup
@@ -411,10 +474,12 @@ int injector_main() {
                 sceIoWrite(fd, curr, sizeof(appinfo));
                 sceIoClose(fd);
 
-                draw_text(13, "DO NOT CLOSE APPLICATION MANUALLY!", red);
+                DO_NOT_CLOSE_POPUP();
 
                 // wait 3sec
                 sceKernelDelayThread(3000000);
+
+                close_popup();
 
                 draw_text(15, "Starting dumper...", green);
 
@@ -445,8 +510,8 @@ int dumper_main() {
     if (fd < 0) {
         draw_start();
 
-        draw_text(0, "Cannot find inject data", red);
-        WAIT_AND_MOVE(2, DUMPER_EXIT);
+        ERROR_POPUP("Cannot find inject data");
+        state = DUMPER_EXIT;
 
         draw_end();
         launch(SAVE_MANAGER);
@@ -459,8 +524,8 @@ int dumper_main() {
     if (strcmp(info.title_id, app_titleid) != 0) {
         draw_start();
 
-        draw_text(0, "Wrong inject information", red);
-        WAIT_AND_MOVE(2, DUMPER_EXIT);
+        ERROR_POPUP("Wrong inject information");
+        state = DUMPER_EXIT;
 
         draw_end();
         launch(SAVE_MANAGER);
@@ -480,6 +545,20 @@ int dumper_main() {
     }
 
     int slot = 0;
+
+#define draw_dumper_header() \
+    draw_text(0, version_string, white); \
+    draw_text(2, "DO NOT CLOSE APPLICATION MANUALLY!", orange);
+
+#define draw_save_stot() \
+    do { \
+        draw_loop_text(0, version_string, white); \
+        draw_loop_text(2, "DO NOT CLOSE APPLICATION MANUALLY!", orange); \
+        print_save_slots(slot); \
+        draw_loop_text(25, concat(ICON_UPDOWN, " - Select Slot"), white); \
+        draw_loop_text(26, concat(ICON_CANCEL, " - Exit"), white); \
+    } while (0)
+
     while (1) {
         draw_start();
 
@@ -487,22 +566,14 @@ int dumper_main() {
 
         switch (state) {
             case DUMPER_MAIN:
-                draw_loop_text(0, version_string, white);
-                draw_loop_text(2, "DO NOT CLOSE APPLICATION MANUALLY!", red);
-
-                print_save_slots(slot);
-
-                draw_loop_text(24, concat(ICON_UPDOWN, " - Select Slot"), white);
-                draw_loop_text(25, concat(ICON_ENTER, " - Confirm"), white);
-                draw_loop_text(26, concat(ICON_CANCEL, " - Exit"), white);
+                draw_save_stot();
 
                 btn = read_btn();
-
-                if (btn & SCE_CTRL_ENTER) {
+                if (btn == SCE_CTRL_ENTER) {
                     state = DUMPER_SLOT_SELECT;
                     break;
                 }
-                if (btn & SCE_CTRL_CANCEL && (btn & SCE_CTRL_HOLD) == 0) {
+                if (btn == SCE_CTRL_CANCEL) {
                     state = DUMPER_EXIT;
                     break;
                 }
@@ -516,69 +587,105 @@ int dumper_main() {
                 }
                 break;
             case DUMPER_SLOT_SELECT:
-                draw_loop_text(0, version_string, white);
-                draw_loop_text(2, "DO NOT CLOSE APPLICATION MANUALLY!", red);
-                make_save_slot_string(slot);
-                draw_loop_text(4, concat("SELECT: ", buf), white);
-                draw_loop_text(5, concat("SAVE DIR: ", backup_dir), white);
+                draw_save_stot();
 
-                draw_loop_text(23, concat(ICON_ENTER, " - Export"), white);
-                draw_loop_text(24, concat(ICON_TRIANGLE, " - Import"), white);
-                draw_loop_text(25, concat(ICON_SQUARE, " - Drop"), white);
-                draw_loop_text(26, concat(ICON_CANCEL, " - Return to Select Slot"), white);
+                do {
+                    make_save_slot_string(slot);
+                    char *slot_msg = strdup(buf);
+                    char *dir_info = strdup(concat("Directory: ", backup_dir));
+
+                    snprintf(buf, 256, "%s Close    %s Drop    %s Import    %s Export",
+                             ICON_CANCEL, ICON_SQUARE, ICON_TRIANGLE, ICON_ENTER);
+                    popup_line lines[] = {
+                        {.string=slot_msg, .color=green},
+                        {.string=""},
+                        {.string=dir_info, .color=white},
+                        {.string=""},
+                        {.string=buf, .color=white, .align=CENTER},
+                        {0},
+                    };
+                    draw_popup(SIMPLE, lines);
+                    free(slot_msg);
+                    free(dir_info);
+                } while (0);
+
                 btn = read_btn();
-                if (btn & SCE_CTRL_HOLD) break;
-                if (btn & SCE_CTRL_ENTER) state = DUMPER_EXPORT;
-                if (btn & SCE_CTRL_TRIANGLE) state = DUMPER_IMPORT;
-                if (btn & SCE_CTRL_SQUARE) state = DUMPER_DROP;
-                if (btn & SCE_CTRL_CANCEL) state = DUMPER_MAIN;
+                if (btn == SCE_CTRL_ENTER) state = DUMPER_EXPORT;
+                if (btn == SCE_CTRL_TRIANGLE) state = DUMPER_IMPORT;
+                if (btn == SCE_CTRL_SQUARE) state = DUMPER_DROP;
+                if (btn == SCE_CTRL_CANCEL) state = DUMPER_MAIN;
                 break;
             case DUMPER_EXPORT:
                 clear_screen();
-                draw_text(0, version_string, white);
-                draw_text(2, "DO NOT CLOSE APPLICATION MANUALLY!", red);
+                draw_dumper_header();
 
                 snprintf(buf, 256, "Exporting to %s...", backup_dir);
                 draw_text(4, buf, white);
                 mkdir(backup_dir, 0777);
                 ret = copydir(save_dir, backup_dir);
-                PASS_OR_MOVE(5, DUMPER_SLOT_SELECT);
-                WAIT_AND_MOVE(7, DUMPER_SLOT_SELECT);
+
+                if (ret < 0) {
+                    ERROR_CODE_POPUP(ret);
+                    state = DUMPER_SLOT_SELECT;
+                    break;
+                }
+                draw_text(5, "Done", green);
+
+                // wait 1sec
+                sceKernelDelayThread(1000000);
+
+                state = DUMPER_SLOT_SELECT;
                 break;
             case DUMPER_IMPORT:
                 clear_screen();
-                draw_text(0, version_string, white);
-                draw_text(2, "DO NOT CLOSE APPLICATION MANUALLY!", red);
+                draw_dumper_header();
 
                 if (!is_dir(backup_dir)) {
-                    draw_text(4, "Cannot find save data", red);
-                    WAIT_AND_MOVE(7, DUMPER_SLOT_SELECT);
+                    ERROR_POPUP("Cannot find save data");
+                    state = DUMPER_SLOT_SELECT;
                     break;
                 }
 
                 snprintf(buf, 256, "Importing from %s...", backup_dir);
                 draw_text(4, buf, white);
                 ret = copydir(backup_dir, "savedata0:");
-                PASS_OR_MOVE(5, DUMPER_SLOT_SELECT);
-                WAIT_AND_MOVE(7, DUMPER_SLOT_SELECT);
+
+                if (ret < 0) {
+                    ERROR_CODE_POPUP(ret);
+                    state = DUMPER_SLOT_SELECT;
+                    break;
+                }
+                draw_text(5, "Done", green);
+
+                // wait 1sec
+                sceKernelDelayThread(1000000);
+
+                state = DUMPER_SLOT_SELECT;
                 break;
             case DUMPER_DROP:
                 clear_screen();
-
-                draw_text(0, version_string, white);
-                draw_text(2, "DO NOT CLOSE APPLICATION MANUALLY!", red);
+                draw_dumper_header();
 
                 if (!is_dir(backup_dir)) {
-                    draw_text(4, "Cannot find save data", red);
-                    WAIT_AND_MOVE(7, DUMPER_SLOT_SELECT);
+                    ERROR_POPUP("Cannot find save data");
+                    state = DUMPER_SLOT_SELECT;
                     break;
                 }
 
                 snprintf(buf, 256, "Remove %s...", backup_dir);
                 draw_text(4, buf, white);
                 ret = rmdir(backup_dir);
-                PASS_OR_MOVE(5, DUMPER_SLOT_SELECT);
-                WAIT_AND_MOVE(7, DUMPER_SLOT_SELECT);
+                if (ret < 0) {
+                    ERROR_CODE_POPUP(ret);
+                    state = DUMPER_SLOT_SELECT;
+                    break;
+                }
+                draw_text(5, "Done", green);
+
+                // wait 1sec
+                sceKernelDelayThread(1000000);
+
+                state = DUMPER_SLOT_SELECT;
                 break;
             case DUMPER_EXIT:
                 launch(SAVE_MANAGER);
