@@ -3,6 +3,7 @@
 
 typedef enum {
     NONE,
+    SIMPLE,
     WARNING,
     ERROR,
     CONFIRM_AND_CANCEL,

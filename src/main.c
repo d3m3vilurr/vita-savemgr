@@ -366,7 +366,7 @@ int injector_main() {
                 do {
                     popup_line lines[] = {
                         {.string="Start save dumper?", .color=green},
-                        {.string="", .color=white},
+                        {.string=""},
                         {.string="Selected:", .color=white},
                         {.string=curr->title_id, .padding={0, 0, 0, 20}, .color=white},
                         {.string=curr->title, .padding={0, 0, 0, 20}, .color=white},
@@ -581,12 +581,11 @@ int dumper_main() {
                 draw_save_stot();
 
                 btn = read_btn();
-
-                if (btn & SCE_CTRL_ENTER) {
+                if (btn == SCE_CTRL_ENTER) {
                     state = DUMPER_SLOT_SELECT;
                     break;
                 }
-                if (btn & SCE_CTRL_CANCEL && (btn & SCE_CTRL_HOLD) == 0) {
+                if (btn == SCE_CTRL_CANCEL) {
                     state = DUMPER_EXIT;
                     break;
                 }
@@ -600,22 +599,33 @@ int dumper_main() {
                 }
                 break;
             case DUMPER_SLOT_SELECT:
-                draw_loop_text(0, version_string, white);
-                draw_loop_text(2, "DO NOT CLOSE APPLICATION MANUALLY!", red);
-                make_save_slot_string(slot);
-                draw_loop_text(4, concat("SELECT: ", buf), white);
-                draw_loop_text(5, concat("SAVE DIR: ", backup_dir), white);
+                draw_save_stot();
 
-                draw_loop_text(23, concat(ICON_ENTER, " - Export"), white);
-                draw_loop_text(24, concat(ICON_TRIANGLE, " - Import"), white);
-                draw_loop_text(25, concat(ICON_SQUARE, " - Drop"), white);
-                draw_loop_text(26, concat(ICON_CANCEL, " - Return to Select Slot"), white);
+                do {
+                    make_save_slot_string(slot);
+                    char *slot_msg = strdup(buf);
+                    char *dir_info = strdup(concat("Directory: ", backup_dir));
+
+                    snprintf(buf, 256, "%s Close    %s Drop    %s Import    %s Export",
+                             ICON_CANCEL, ICON_SQUARE, ICON_TRIANGLE, ICON_ENTER);
+                    popup_line lines[] = {
+                        {.string=slot_msg, .color=green},
+                        {.string=""},
+                        {.string=dir_info, .color=white},
+                        {.string=""},
+                        {.string=buf, .color=white, .align=CENTER},
+                        {0},
+                    };
+                    draw_popup(SIMPLE, lines);
+                    free(slot_msg);
+                    free(dir_info);
+                } while (0);
+
                 btn = read_btn();
-                if (btn & SCE_CTRL_HOLD) break;
-                if (btn & SCE_CTRL_ENTER) state = DUMPER_EXPORT;
-                if (btn & SCE_CTRL_TRIANGLE) state = DUMPER_IMPORT;
-                if (btn & SCE_CTRL_SQUARE) state = DUMPER_DROP;
-                if (btn & SCE_CTRL_CANCEL) state = DUMPER_MAIN;
+                if (btn == SCE_CTRL_ENTER) state = DUMPER_EXPORT;
+                if (btn == SCE_CTRL_TRIANGLE) state = DUMPER_IMPORT;
+                if (btn == SCE_CTRL_SQUARE) state = DUMPER_DROP;
+                if (btn == SCE_CTRL_CANCEL) state = DUMPER_MAIN;
                 break;
             case DUMPER_EXPORT:
                 clear_screen();

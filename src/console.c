@@ -139,8 +139,8 @@ void draw_popup(popup_type type, popup_line lines[]) {
         int width = vita2d_pgf_text_width(font, 1.0, line);
         width += lines[cnt].padding[1]; // right
         width += lines[cnt].padding[3]; // left
-        cnt += 1;
         lines[cnt].width = width;
+        cnt += 1;
         if (width <= max_width) {
             continue;
         }
@@ -183,13 +183,13 @@ void draw_popup(popup_type type, popup_line lines[]) {
         int absolute_x = p.x;
         switch (lines[i].align) {
             case LEFT:
-                absolute_x = p.x + lines[i].padding[3]; // left
+                absolute_x += lines[i].padding[3]; // left
                 break;
             case RIGHT:
-                absolute_x = p.x + max_width - lines[i].width + lines[i].padding[3];
+                absolute_x += max_width - lines[i].width + lines[i].padding[3];
                 break;
             case CENTER:
-                absolute_x = SCREEN_HALF_WIDTH - (lines[i].width / 2) + lines[i].padding[3];
+                absolute_x =SCREEN_HALF_WIDTH - (lines[i].width / 2) + lines[i].padding[3];
                 break;
         }
         vita2d_pgf_draw_text(font,
