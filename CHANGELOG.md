@@ -1,4 +1,6 @@
 ## Unreleased
+
+## 0.8.0
 - Change default directories to `ux0:/data/savegames`
 - Auto migrate older directories
 - Support drop save slot
