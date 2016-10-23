@@ -36,6 +36,8 @@ enum {
     DUMPER_EXPORT,
     DUMPER_IMPORT,
     DUMPER_DROP,
+    DUMPER_FORMAT,
+    DUMPER_FORMAT_CONFIRM,
     DUMPER_EXIT,
 };
 
@@ -577,6 +579,10 @@ int dumper_main() {
                     state = DUMPER_EXIT;
                     break;
                 }
+                if (btn & (SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER)) {
+                    state = DUMPER_FORMAT;
+                    break;
+                }
                 if ((btn & SCE_CTRL_UP) && slot > 0) {
                     slot -= 1;
                     break;
@@ -680,6 +686,52 @@ int dumper_main() {
                     state = DUMPER_SLOT_SELECT;
                     break;
                 }
+                draw_text(5, "Done", green);
+
+                // wait 1sec
+                sceKernelDelayThread(1000000);
+
+                state = DUMPER_SLOT_SELECT;
+                break;
+            case DUMPER_FORMAT:
+                draw_save_stot();
+
+                do {
+                    popup_line lines[] = {
+                        {.string="Format savedata", .color=red},
+                        {.string=""},
+                        {.string="This action cannot be cancellation", .color=white},
+                        {.string="Please have deep considering", .color=white},
+                        {.string="And must dump savedata before this action", .color=white},
+                        {0},
+                    };
+                    draw_popup(CONFIRM_AND_CANCEL, lines);
+                } while (0);
+
+                btn = read_btn();
+                if (btn == SCE_CTRL_CANCEL) {
+                    state = DUMPER_MAIN;
+                    break;
+                }
+                if (btn == SCE_CTRL_ENTER) {
+                    state = DUMPER_FORMAT_CONFIRM;
+                    break;
+                }
+                break;
+            case DUMPER_FORMAT_CONFIRM:
+                clear_screen();
+                draw_dumper_header();
+
+                snprintf(buf, 256, "Formatting...");
+                draw_text(4, "Formatting...", white);
+
+                ret = rm_savedir(save_dir);
+                if (ret < 0) {
+                    ERROR_CODE_POPUP(ret);
+                    state = DUMPER_SLOT_SELECT;
+                    break;
+                }
+
                 draw_text(5, "Done", green);
 
                 // wait 1sec
