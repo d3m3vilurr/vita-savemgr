@@ -240,22 +240,21 @@ void print_save_slots(int curr_slot) {
 
 #define DO_NOT_CLOSE_POPUP() \
     do { \
-        const char *lines[] = { \
-            "", \
-            "DO NOT CLOSE APPLICATION MANUALLY!", \
-            "", \
-            NULL, \
+        popup_line lines[] = { \
+            {.string="DO NOT CLOSE APPLICATION MANUALLY!", \
+             .padding={20, 0, 20, 0}, .color=orange}, \
+            {0}, \
         }; \
         open_popup(WARNING, lines); \
     } while (0)
 
 #define ERROR_POPUP(msg) \
     do { \
-        const char *lines[] = { \
-            "", \
-            (msg), \
-            "", \
-            NULL, \
+        popup_line lines[] = { \
+            {.string=""}, \
+            {.string=(msg), .color=red}, \
+            {.string=""}, \
+            {0}, \
         }; \
         open_popup(ERROR, lines); \
     } while (0); \
@@ -266,12 +265,12 @@ void print_save_slots(int curr_slot) {
 
 #define ERROR_POPUP2(msg1, msg2) \
     do { \
-        const char *lines[] = { \
-            "", \
-            (msg1), \
-            (msg2), \
-            "", \
-            NULL, \
+        popup_line lines[] = { \
+            {.string=""}, \
+            {.string=(msg1), .color=red}, \
+            {.string=(msg2), .color=white}, \
+            {.string=""}, \
+            {0}, \
         }; \
         open_popup(ERROR, lines); \
     } while (0); \
@@ -365,13 +364,13 @@ int injector_main() {
                 draw_game_list();
 
                 do {
-                    const char *lines[] = {
-                        "Start save dumper?",
-                        "",
-                        "Selected:",
-                        curr->title_id,
-                        curr->title,
-                        NULL,
+                    popup_line lines[] = {
+                        {.string="Start save dumper?", .color=green},
+                        {.string="", .color=white},
+                        {.string="Selected:", .color=white},
+                        {.string=curr->title_id, .padding={0, 0, 0, 20}, .color=white},
+                        {.string=curr->title, .padding={0, 0, 0, 20}, .color=white},
+                        {0},
                     };
 
                     draw_popup(CONFIRM_AND_CANCEL, lines);

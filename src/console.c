@@ -126,14 +126,21 @@ point draw_rectangle(int width, int height, int border, int padding, int color) 
     return p;
 }
 
-void draw_popup(popup_type type, const char *lines[]) {
+void draw_popup(popup_type type, popup_line lines[]) {
     int max_width = 0;
     const char *max_line = NULL;
     int cnt = 0;
-    while (lines[cnt]) {
-        const char *line = lines[cnt];
-        cnt += 1;
+    int height = 0;
+    while (lines[cnt].string) {
+        const char *line = lines[cnt].string;
+        height += ROW_HEIGHT;
+        height += lines[cnt].padding[0]; // top
+        height += lines[cnt].padding[2]; // bottom
         int width = vita2d_pgf_text_width(font, 1.0, line);
+        width += lines[cnt].padding[1]; // right
+        width += lines[cnt].padding[3]; // left
+        cnt += 1;
+        lines[cnt].width = width;
         if (width <= max_width) {
             continue;
         }
@@ -144,27 +151,24 @@ void draw_popup(popup_type type, const char *lines[]) {
         return;
     }
 
-    int height;
     int line;
     switch (type) {
         case CONFIRM_AND_CANCEL:
             if (max_width < confirm_msg_width) {
                 max_width = confirm_msg_width;
             }
-            height = (cnt + 2) * ROW_HEIGHT;
+            height += 2 * ROW_HEIGHT; // add 2 lines
             line = white;
             break;
         case WARNING:
             line = orange;
-            height = cnt * ROW_HEIGHT;
             break;
         case ERROR:
             line = red;
-            height = (cnt + 2) * ROW_HEIGHT;
+            height += 2 * ROW_HEIGHT; // add 2 lines
             break;
         default:
             line = white;
-            height = cnt * ROW_HEIGHT;
     }
     if (max_width < BOX_MIN_WIDTH) {
         max_width = BOX_MIN_WIDTH;
@@ -172,8 +176,30 @@ void draw_popup(popup_type type, const char *lines[]) {
 
     point p = draw_rectangle(max_width, height, BOX_BORDER, BOX_PADDING, line);
 
+    int absolute_y = p.y;
     for (int i = 0; i < cnt; i += 1) {
-        vita2d_pgf_draw_text(font, p.x, p.y + ((i + 1) * ROW_HEIGHT), white, 1.0, lines[i]);
+        absolute_y += ROW_HEIGHT;
+        absolute_y += lines[i].padding[0]; // top
+        int absolute_x = p.x;
+        switch (lines[i].align) {
+            case LEFT:
+                absolute_x = p.x + lines[i].padding[3]; // left
+                break;
+            case RIGHT:
+                absolute_x = p.x + max_width - lines[i].width + lines[i].padding[3];
+                break;
+            case CENTER:
+                absolute_x = SCREEN_HALF_WIDTH - (lines[i].width / 2) + lines[i].padding[3];
+                break;
+        }
+        vita2d_pgf_draw_text(font,
+                             absolute_x,
+                             absolute_y,
+                             lines[i].color,
+                             1.0,
+                             lines[i].string);
+
+        absolute_y += lines[i].padding[2]; // bottom
     }
 
     switch (type) {
@@ -200,7 +226,7 @@ void draw_popup(popup_type type, const char *lines[]) {
 
 uint32_t backup_fb[SCREEN_STRIDE_IN_PIXELS * SCREEN_HEIGHT];
 
-void open_popup(popup_type type, const char *lines[]) {
+void open_popup(popup_type type, popup_line *lines) {
     uint32_t *fb = vita2d_get_current_fb();
     memcpy(backup_fb, fb, sizeof(backup_fb));
 
