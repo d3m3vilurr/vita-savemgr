@@ -11,6 +11,7 @@ if [ ! -f $VITASDK/bin/arm-vita-eabi-gcc ]; then
     tar xjf vitatoolchain.tar.bz2
     mv vitasdk/* $VITASDK/
 
+    curl https://raw.githubusercontent.com/ooPo/vitatoolchain/master/scripts/004-vita-headers.sh | bash
     curl https://raw.githubusercontent.com/ooPo/vitatoolchain/master/scripts/007-vdpm.sh | bash
     curl https://raw.githubusercontent.com/ooPo/vitatoolchain/master/scripts/008-sdl-vita.sh | bash
     curl https://raw.githubusercontent.com/ooPo/vitatoolchain/master/scripts/009-libftpvita.sh | bash
