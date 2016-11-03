@@ -1,7 +1,18 @@
 #include <psp2/ctrl.h>
+#include <psp2/shellutil.h>
 
 #include "common.h"
 #include "button.h"
+
+void lock_psbutton() {
+    sceShellUtilLock(SCE_SHELL_UTIL_LOCK_TYPE_PS_BTN |
+                     SCE_SHELL_UTIL_LOCK_TYPE_QUICK_MENU);
+}
+
+void unlock_psbutton() {
+    sceShellUtilUnlock(SCE_SHELL_UTIL_LOCK_TYPE_PS_BTN |
+                       SCE_SHELL_UTIL_LOCK_TYPE_QUICK_MENU);
+}
 
 int read_btn() {
     SceCtrlData pad = {0};
