@@ -1,4 +1,5 @@
 ## Unreleased
+- Block PS button on the critical sections
 
 ## 0.8.0
 - Change default directories to `ux0:/data/savegames`
