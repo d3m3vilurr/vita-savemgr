@@ -18,7 +18,7 @@ cache:
         - $HOME/opt
 
 before_script:
-    - bash .travis.d/install_toolchain.sh
+    - travis_wait bash .travis.d/install_toolchain.sh
 
 script:
     - cppcheck --error-exitcode=1 --enable=style,performance,portability src/*.c
