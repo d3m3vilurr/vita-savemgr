@@ -60,6 +60,7 @@ target_link_libraries(${PROJECT_NAME}.elf
     -lSceSysmodule_stub
     -lSceCtrl_stub
     -lScePgf_stub
+    -lSceShellSvc_stub
     -lz
     -lm
     -lvita2d

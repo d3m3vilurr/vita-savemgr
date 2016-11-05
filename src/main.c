@@ -9,6 +9,7 @@
 #include <psp2/ctrl.h>
 #include <psp2/system_param.h>
 #include <psp2/rtc.h>
+#include <psp2/shellutil.h>
 #include <vita2d.h>
 
 #include "common.h"
@@ -62,6 +63,7 @@ int launch(const char *titleid) {
     sceKernelDelayThread(10000);
     sceAppMgrLaunchAppByUri(0xFFFFF, uri);
 
+    unlock_psbutton();
     sceKernelExitProcess(0);
 
     return 0;
@@ -80,6 +82,7 @@ int cleanup_prev_inject(applist *list) {
 
     char backup[256];
 
+    lock_psbutton();
     draw_start();
     if (is_encrypted_eboot(info.eboot)) {
         char patch[256];
@@ -87,6 +90,7 @@ int cleanup_prev_inject(applist *list) {
         snprintf(patch, 256, "ux0:patch/%s", info.title_id);
         snprintf(patch_eboot, 256, "ux0:patch/%s/eboot.bin", info.title_id);
         if (!is_dumper_eboot(patch_eboot)) {
+            unlock_psbutton();
             return 0;
         }
 
@@ -129,6 +133,7 @@ int cleanup_prev_inject(applist *list) {
     }
 exit:
     draw_end();
+    unlock_psbutton();
     return ret;
 }
 
@@ -370,6 +375,7 @@ int injector_main() {
                 }
                 break;
             case INJECTOR_START_DUMPER:
+                lock_psbutton();
                 clear_screen();
                 draw_text(0, version_string, white);
 
@@ -377,6 +383,7 @@ int injector_main() {
 
                 // cartridge & digital encrypted games
                 if (!exists(curr->eboot)) {
+                    unlock_psbutton();
                     if (strcmp(curr->dev, "gro0") == 0) {
                         //draw_text(2, "Cartridge not inserted", red);
                         ERROR_POPUP("Cartridge not inserted");
@@ -402,6 +409,7 @@ int injector_main() {
                         rmdir(backup);
                         ret = mvdir(patch, backup);
                         if (ret < 0) {
+                            unlock_psbutton();
                             ERROR_CODE_POPUP(ret);
                             state = INJECTOR_MAIN;
                             break;
@@ -415,6 +423,7 @@ int injector_main() {
                     ret = copydir("ux0:app/SAVEMGR00", patch);
                     // TODO restore patch
                     if (ret < 0) {
+                        unlock_psbutton();
                         ERROR_CODE_POPUP(ret);
                         state = INJECTOR_MAIN;
                         break;
@@ -430,6 +439,7 @@ int injector_main() {
                     ret = copyfile(buf, patch);
 
                     if (ret < 0) {
+                        unlock_psbutton();
                         ERROR_CODE_POPUP(ret);
                         state = INJECTOR_MAIN;
                         break;
@@ -440,6 +450,7 @@ int injector_main() {
                     ret = -1;
 
                     if (strcmp(curr->dev, "gro0") == 0) {
+                        unlock_psbutton();
                         ERROR_POPUP2("Game not supported", "Please send a bug report on github");
                         state = INJECTOR_MAIN;
                         break;
@@ -452,6 +463,7 @@ int injector_main() {
                     ret = sceIoRename(curr->eboot, backup);
 
                     if (ret < 0) {
+                        unlock_psbutton();
                         ERROR_CODE_POPUP(ret);
                         state = INJECTOR_MAIN;
                         break;
@@ -464,6 +476,7 @@ int injector_main() {
                     // TODO if error, need restore eboot
 
                     if (ret < 0) {
+                        unlock_psbutton();
                         ERROR_CODE_POPUP(ret);
                         state = INJECTOR_MAIN;
                         break;
@@ -498,6 +511,8 @@ int injector_main() {
 }
 
 int dumper_main() {
+    lock_psbutton();
+
     int state = DUMPER_MAIN;
 
     char save_dir[256], backup_dir[buf_length];
@@ -751,6 +766,7 @@ int main() {
     vita2d_init();
     init_console();
     load_config();
+    sceShellUtilInitEvents(0);
 
     buf_length = strlen(config.full_path_format) + 64;
     buf = malloc(sizeof(char) * buf_length);
