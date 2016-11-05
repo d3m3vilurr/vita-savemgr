@@ -766,7 +766,7 @@ int main() {
     vita2d_init();
     init_console();
     load_config();
-    SceShellUtil_E8AD11EC(0);
+    sceShellUtilInitEvents(0);
 
     buf_length = strlen(config.full_path_format) + 64;
     buf = malloc(sizeof(char) * buf_length);
