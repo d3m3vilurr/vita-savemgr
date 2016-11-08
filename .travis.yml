@@ -25,5 +25,22 @@ script:
     - mkdir build
     - cd build && cmake .. && make
 
-after_success:
+before_deploy:
+    - git config --global user.email "builds@travis-ci.com"
+    - git config --global user.name "Travis CI"
+    - git tag -f nightly
+    - git push -q https://$TAGPERM@github.com/$TRAVIS_REPO_SLUG -f --tags
+
+deploy:
+    provider: releases
+    api_key: $GH_TOKEN
+    file:
+        - $TRAVIS_BUILD_DIR/build/savemgr.vpk
+    overwrite: true
+    skip_cleanup: true
+    on:
+        tags: false
+        branch: master
+
+after_deploy:
     - bash $TRAVIS_BUILD_DIR/.travis.d/deploy_nightly.sh
