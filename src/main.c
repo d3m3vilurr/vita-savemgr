@@ -34,8 +34,8 @@ enum {
 enum {
     DUMPER_MAIN = 1,
     DUMPER_SLOT_SELECT,
-    DUMPER_EXPORT,
-    DUMPER_IMPORT,
+    DUMPER_BACKUP,
+    DUMPER_RESTORE,
     DUMPER_DROP,
     DUMPER_FORMAT,
     DUMPER_FORMAT_CONFIRM,
@@ -615,7 +615,7 @@ int dumper_main() {
                     char *slot_msg = strdup(buf);
                     char *dir_info = strdup(concat("Directory: ", backup_dir));
 
-                    snprintf(buf, 256, "%s Close    %s Drop    %s Import    %s Export",
+                    snprintf(buf, 256, "%s Close    %s Drop    %s Restore    %s Backup",
                              ICON_CANCEL, ICON_SQUARE, ICON_TRIANGLE, ICON_ENTER);
                     popup_line lines[] = {
                         {.string=slot_msg, .color=green},
@@ -631,16 +631,16 @@ int dumper_main() {
                 } while (0);
 
                 btn = read_btn();
-                if (btn == SCE_CTRL_ENTER) state = DUMPER_EXPORT;
-                if (btn == SCE_CTRL_TRIANGLE) state = DUMPER_IMPORT;
+                if (btn == SCE_CTRL_ENTER) state = DUMPER_BACKUP;
+                if (btn == SCE_CTRL_TRIANGLE) state = DUMPER_RESTORE;
                 if (btn == SCE_CTRL_SQUARE) state = DUMPER_DROP;
                 if (btn == SCE_CTRL_CANCEL) state = DUMPER_MAIN;
                 break;
-            case DUMPER_EXPORT:
+            case DUMPER_BACKUP:
                 clear_screen();
                 draw_dumper_header();
 
-                snprintf(buf, 256, "Exporting to %s...", backup_dir);
+                snprintf(buf, 256, "Backuping to %s...", backup_dir);
                 draw_text(4, buf, white);
                 mkdir(backup_dir, 0777);
                 ret = copydir(save_dir, backup_dir);
@@ -657,7 +657,7 @@ int dumper_main() {
 
                 state = DUMPER_SLOT_SELECT;
                 break;
-            case DUMPER_IMPORT:
+            case DUMPER_RESTORE:
                 clear_screen();
                 draw_dumper_header();
 
@@ -667,7 +667,7 @@ int dumper_main() {
                     break;
                 }
 
-                snprintf(buf, 256, "Importing from %s...", backup_dir);
+                snprintf(buf, 256, "Restoring from %s...", backup_dir);
                 draw_text(4, buf, white);
                 ret = copydir(backup_dir, "savedata0:");
 
