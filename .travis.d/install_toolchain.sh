@@ -9,7 +9,6 @@ if [ ! -f $VITASDK/bin/arm-vita-eabi-gcc ]; then
     curl -s https://api.github.com/repos/vitasdk/autobuilds/releases | grep browser_download_url | grep linux | head -n 1 | cut -d '"' -f 4 | xargs curl -L | tar xj
     mv vitasdk/* $VITASDK/
 
-    curl https://raw.githubusercontent.com/ooPo/vitatoolchain/master/scripts/004-vita-headers.sh | bash
     curl https://raw.githubusercontent.com/ooPo/vitatoolchain/master/scripts/007-vdpm.sh | bash
 
     cd ..
