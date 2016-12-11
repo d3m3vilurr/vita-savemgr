@@ -2,11 +2,15 @@ language: c
 
 addons:
     apt:
+        sources:
+            - ubuntu-toolchain-r-test
+            - kalakris-cmake
         packages:
             - cppcheck
             - curl
             - cmake
             - patch
+            - ninja-build
 
 branches:
       except:
@@ -23,7 +27,7 @@ before_script:
 script:
     - cppcheck --error-exitcode=1 --enable=style,performance,portability src/*.c
     - mkdir build
-    - cd build && cmake .. && make
+    - cd build && cmake -GNinja .. && ninja
 
 before_deploy:
     - git config --global user.email "builds@travis-ci.com"
