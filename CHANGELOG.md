@@ -1,6 +1,7 @@
 ## Unreleased
 - Block PS button on the critical sections
 - Reword import/export to restore/backup (#32)
+- Use newer vita-toolchain for CI build
 
 ## 0.8.0
 - Change default directories to `ux0:/data/savegames`
