@@ -4,6 +4,7 @@
 - Use newer vita-toolchain for CI build
 - Use ninja-build for CI build
 - Fix cannot earning achievement (#34)
+- Enable package compress
 
 ## 0.8.0
 - Change default directories to `ux0:/data/savegames`
