@@ -51,8 +51,13 @@ add_executable(${PROJECT_NAME}.elf
 )
 
 target_link_libraries(${PROJECT_NAME}.elf
+    -lvita2d
+    -lfreetype
+    -lz
+    -lm
     -lSceIofilemgr_stub
     -lSceKernelThreadMgr_stub
+    -lSceCommonDialog_stub
     -lSceDisplay_stub
     -lSceGxm_stub
     -lSceAppMgr_stub
@@ -61,10 +66,6 @@ target_link_libraries(${PROJECT_NAME}.elf
     -lSceCtrl_stub
     -lScePgf_stub
     -lSceShellSvc_stub
-    -lz
-    -lm
-    -lvita2d
-    -lfreetype
 )
 
 add_custom_target(${PROJECT_NAME}.vpk ALL
