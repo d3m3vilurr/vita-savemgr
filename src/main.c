@@ -667,8 +667,13 @@ int dumper_main() {
                     break;
                 }
 
+                draw_text(4, "Remove old savedata0...", white);
+                ret = rm_savedir(save_dir);
+
+                draw_text(5, "Done", green);
+
                 snprintf(buf, 256, "Restoring from %s...", backup_dir);
-                draw_text(4, buf, white);
+                draw_text(7, buf, white);
                 ret = copydir(backup_dir, "savedata0:");
 
                 if (ret < 0) {
@@ -676,7 +681,7 @@ int dumper_main() {
                     state = DUMPER_SLOT_SELECT;
                     break;
                 }
-                draw_text(5, "Done", green);
+                draw_text(8, "Done", green);
 
                 // wait 1sec
                 sceKernelDelayThread(1000000);
