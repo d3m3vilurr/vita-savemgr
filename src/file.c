@@ -8,12 +8,21 @@
 #include "common.h"
 #include "file.h"
 
-#define printf psvDebugScreenPrintf
+void *memmem(const void *, size_t, const void *, size_t);
+
 
 #define SCE_ERROR_ERRNO_ENOENT 0x80010002
 #define SCE_ERROR_ERRNO_EEXIST 0x80010011
 #define SCE_ERROR_ERRNO_ENODEV 0x80010013
 #define SCE_ERROR_ERRNO_EINVAL 0x80010016
+
+char *blacklists[] = {
+    "savedata0:/sce_sys/_safemem.dat",
+    "savedata0:/sce_sys/_keystone",
+    "savedata0:/sce_sys/_param.sfo",
+    "savedata0:/sce_sys/sealedkey",
+    NULL,
+};
 
 int exists(const char *path) {
     SceIoStat stat = {0};
@@ -173,6 +182,14 @@ int copyfile(char *src, char *dest) {
     // The source and destination paths are identical
     if (strcasecmp(src, dest) == 0) {
         return -1;
+    }
+
+    int i = 0;
+    while (blacklists[i]) {
+        if (strcasecmp(dest, blacklists[i]) == 0) {
+            return 2;
+        }
+        i += 1;
     }
 
     int ignore_error = strncmp(dest, "savedata0:", 10) == 0;
