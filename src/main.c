@@ -640,7 +640,7 @@ int dumper_main() {
                 clear_screen();
                 draw_dumper_header();
 
-                snprintf(buf, 256, "Backuping to %s...", backup_dir);
+                snprintf(buf, 256, "Backing up to %s...", backup_dir);
                 draw_text(4, buf, white);
                 mkdir(backup_dir, 0777);
                 ret = copydir(save_dir, backup_dir);
