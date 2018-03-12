@@ -11,10 +11,10 @@
 void *memmem(const void *, size_t, const void *, size_t);
 
 
-#define SCE_ERROR_ERRNO_ENOENT 0x80010002
-#define SCE_ERROR_ERRNO_EEXIST 0x80010011
-#define SCE_ERROR_ERRNO_ENODEV 0x80010013
-#define SCE_ERROR_ERRNO_EINVAL 0x80010016
+#define SCE_ERROR_ERRNO_ENOENT (int)(0x80010002)
+#define SCE_ERROR_ERRNO_EEXIST (int)(0x80010011)
+#define SCE_ERROR_ERRNO_ENODEV (int)(0x80010013)
+#define SCE_ERROR_ERRNO_EINVAL (int)(0x80010016)
 
 char *blacklists[] = {
     "savedata0:/sce_sys/_safemem.dat",
