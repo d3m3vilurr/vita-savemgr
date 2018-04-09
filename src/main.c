@@ -72,10 +72,8 @@ typedef enum {
 } ProcessError;
 
 char *save_dir_path(const appinfo *info) {
-    char *path = NULL;
-
     //if (strncmp(info->dev, "gro0", 4) == 0) {
-    path = calloc(sizeof(char), 1);
+    char *path = calloc(sizeof(char), 1);
     aprintf(&path, "grw0:savedata/%s", info->real_id);
     if (exists(path)) {
         return path;

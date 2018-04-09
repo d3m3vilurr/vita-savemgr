@@ -72,7 +72,7 @@ int get_applist(applist *list) {
     }
     sqlite3_close(db);
 
-    if (list->count <= 0) {
+    if (list->count < 1) {
         return -3;
     }
     return 0;

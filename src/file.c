@@ -286,7 +286,6 @@ int known_pfs_ids[] = {
 };
 
 int pfs_mount(const char *path) {
-    int res;
     char klicensee[0x10];
     //char license_buf[0x200];
     ShellMountIdArgs args;
@@ -303,7 +302,7 @@ int pfs_mount(const char *path) {
     for (i = 0; i < sizeof(known_pfs_ids) / sizeof(int); i++) {
         args.id = known_pfs_ids[i];
 
-        res = shellUserMountById(&args);
+        int res = shellUserMountById(&args);
         if (res >= 0)
             return res;
     }
