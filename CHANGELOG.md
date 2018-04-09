@@ -1,4 +1,7 @@
 ## Unreleased
+- Move 2.0.0 tree
+- Support GUI
+- No more needs app switching
 
 ## 1.0.0
 - Block PS button on the critical sections
@@ -35,7 +38,6 @@ this application.
 - Support encrypted digital games; Thanks @mopi1402 (#11)
 - Revert some codes for Gundam Breaker3 AV; so may not support this game. :(
 - Remove rinCheat's code
-
 
 ## 0.4.1
 - Fix cannot decrypt problem of physical copy gundam breaker 3 asia version
