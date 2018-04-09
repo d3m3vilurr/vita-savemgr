@@ -1,4 +1,6 @@
 ## Unreleased
+
+## 1.0.0
 - Block PS button on the critical sections
 - Reword import/export to restore/backup (#32)
 - Use newer vita-toolchain for CI build
