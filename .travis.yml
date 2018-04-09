@@ -23,6 +23,7 @@ cache:
 
 before_script:
     - travis_wait bash .travis.d/install_toolchain.sh
+    - travis_wait bash .travis.d/build_vitashell_modules.sh
 
 script:
     - cppcheck --error-exitcode=1 --enable=style,performance,portability src/*.c
