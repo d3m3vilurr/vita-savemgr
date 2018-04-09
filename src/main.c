@@ -1,788 +1,878 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include <psp2/ctrl.h>
 #include <psp2/appmgr.h>
 #include <psp2/kernel/processmgr.h>
 #include <psp2/io/dirent.h>
 #include <psp2/io/fcntl.h>
 #include <psp2/ctrl.h>
+#include <psp2/touch.h>
 #include <psp2/system_param.h>
 #include <psp2/rtc.h>
 #include <psp2/shellutil.h>
+#include <psp2/kernel/modulemgr.h>
 #include <vita2d.h>
+#include <taihen.h>
 
 #include "common.h"
 #include "config.h"
 #include "appdb.h"
-#include "console.h"
 #include "file.h"
 #include "font.h"
-#include "button.h"
+#include "display.h"
+#include "input.h"
+#include "util.h"
 
-#define PAGE_ITEM_COUNT 20
+vita2d_pgf* font;
+SceUID patch_modid = -1;
+SceUID kernel_modid = -1;
+SceUID user_modid = -1;
 
-enum {
-    INJECTOR_MAIN = 1,
-    INJECTOR_TITLE_SELECT,
-    INJECTOR_BACKUP_PATCH,
-    INJECTOR_START_DUMPER,
-    INJECTOR_RESTORE_PATCH,
-    INJECTOR_EXIT,
-};
+int SCE_CTRL_ENTER;
+int SCE_CTRL_CANCEL;
+char ICON_ENTER[4];
+char ICON_CANCEL[4];
 
-enum {
-    DUMPER_MAIN = 1,
-    DUMPER_SLOT_SELECT,
-    DUMPER_BACKUP,
-    DUMPER_RESTORE,
-    DUMPER_DROP,
-    DUMPER_FORMAT,
-    DUMPER_FORMAT_CONFIRM,
-    DUMPER_EXIT,
-};
+char *confirm_msg;
+int confirm_msg_width;
+char *close_msg;
+int close_msg_width;
 
-int ret;
-int btn;
-char *buf;
-int buf_length;
+typedef enum {
+    UNKNOWN = 0,
+    MAIN_SCREEN = 1,
+    PRINT_APPINFO,
+    BACKUP_MODE,
+    BACKUP_CONFIRM,
+    BACKUP_PROGRESS,
+    BACKUP_FAIL,
+    RESTORE_MODE,
+    RESTORE_CONFIRM,
+    RESTORE_PROGRESS,
+    RESTORE_FAIL,
+    DELETE_MODE,
+    DELETE_CONFIRM,
+    DELETE_PROGRESS,
+    DELETE_FAIL,
+    FORMAT_MODE,
+    FORMAT_CONFIRM,
+    FORMAT_PROGRESS,
+    FORMAT_FAIL,
+} ScreenState;
 
-char *concat(const char *str1, const char *str2) {
-    char tmp[buf_length];
-    snprintf(tmp, buf_length, "%s%s", str1, str2);
-    memcpy(buf, tmp, buf_length);
-    return buf;
-}
+typedef enum {
+    NO_ERROR = 0,
+    ERROR_NO_SAVE_DIR = 1,
+    ERROR_NO_SLOT_DIR,
+    ERROR_MEMORY_ALLOC,
+    ERROR_DECRYPT_DIR,
+    ERROR_COPY_DIR,
+} ProcessError;
 
-int launch(const char *titleid) {
-    char uri[32];
-    sprintf(uri, "psgm:play?titleid=%s", titleid);
+char *save_dir_path(const appinfo *info) {
+    char *path = NULL;
 
-    sceKernelDelayThread(10000);
-    sceAppMgrLaunchAppByUri(0xFFFFF, uri);
-    sceKernelDelayThread(10000);
-    sceAppMgrLaunchAppByUri(0xFFFFF, uri);
-
-    unlock_psbutton();
-    sceKernelExitProcess(0);
-
-    return 0;
-}
-
-int cleanup_prev_inject(applist *list) {
-    int fd = sceIoOpen(TEMP_FILE, SCE_O_RDONLY, 0777);
-    if (fd <= 0) {
-        return 0;
+    //if (strncmp(info->dev, "gro0", 4) == 0) {
+    path = calloc(sizeof(char), 1);
+    aprintf(&path, "grw0:savedata/%s", info->real_id);
+    if (exists(path)) {
+        return path;
     }
-    appinfo info;
-    sceIoRead(fd, &info, sizeof(appinfo));
-    sceIoClose(fd);
+    free(path);
+    //}
 
-    sceIoRemove(TEMP_FILE);
+    path = calloc(sizeof(char), 1);
+    aprintf(&path, "ux0:user/00/savedata/%s", info->real_id);
+    if (exists(path)) {
+        return path;
+    }
+    free(path);
+    return NULL;
+}
 
-    char backup[256];
+char *slot_dir_path(const appinfo *info, int slot) {
+    char *t0 = calloc(sizeof(char), 1);
+    char *t1 = calloc(sizeof(char), 1);
+    char *path = calloc(sizeof(char), 1);
+    aprintf(&t0, "%s/%s", config.base, config.slot_format);
+    aprintf(&t1, t0, info->title_id, slot);
+    aprintf(&path, "ux0:%s", t1);
+    free(t1);
+    free(t0);
+    return path;
+}
 
-    lock_psbutton();
-    draw_start();
-    if (is_encrypted_eboot(info.eboot)) {
-        char patch[256];
-        char patch_eboot[256];
-        snprintf(patch, 256, "ux0:patch/%s", info.title_id);
-        snprintf(patch_eboot, 256, "ux0:patch/%s/eboot.bin", info.title_id);
-        if (!is_dumper_eboot(patch_eboot)) {
-            unlock_psbutton();
-            return 0;
-        }
+char *slot_sfo_path(const appinfo *info, int slot) {
+    char *t0 = calloc(sizeof(char), 1);
+    char *t1 = calloc(sizeof(char), 1);
+    char *path = calloc(sizeof(char), 1);
+    aprintf(&t0, "%s/%s/sce_sys/param.sfo", config.base, config.slot_format);
+    aprintf(&t1, t0, info->title_id, slot);
+    aprintf(&path, "ux0:%s", t1);
+    free(t1);
+    free(t0);
+    return path;
+}
 
-        draw_text(0, "Cleaning up old data...", white);
-        ret = rmdir(patch);
-        if (ret < 0) {
-            draw_text(1, "Error", red);
-            goto exit;
-        }
-        draw_text(1, "Done", white);
+void draw_icon(icon_data *icon, int row, int col) {
+    icon->touch_area.left = ICON_LEFT(col);
+    icon->touch_area.top = ICON_TOP(row);
+    icon->touch_area.right = icon->touch_area.left + ICON_WIDTH;
+    icon->touch_area.bottom = icon->touch_area.top + ICON_HEIGHT;
 
-        snprintf(backup, 256, "ux0:patch/%s_orig", info.title_id);
-        if (is_dir(backup)) {
-            draw_text(3, "Restoring patch...", white);
-            ret = mvdir(backup, patch);
-            if (ret < 0) {
-                draw_text(4, "Error", red);
-                goto exit;
-            }
-            draw_text(4, "Done", white);
-        }
-        ret = 0;
+    if (!icon->texture) {
+        return;
+    }
+    float w = vita2d_texture_get_width(icon->texture);
+    float h = vita2d_texture_get_height(icon->texture);
+    float z0 = ICON_WIDTH / w;
+    float z1 = ICON_HEIGHT / h;
+    float zoom = z0 < z1 ? z0 : z1;
+    vita2d_draw_texture_scale_rotate_hotspot(icon->texture,
+        ICON_LEFT(col) + (ICON_WIDTH / 2),
+        ICON_TOP(row) + (ICON_HEIGHT / 2),
+        zoom, zoom,
+        0,
+        w / 2,
+        h / 2
+    );
+}
+
+void draw_icons(appinfo *curr) {
+    // __________tm_bat
+    // |__|__|__|__|__|
+    // |__|__|__|__|__|
+    // |__|__|__|__|__|
+    // |__|__|__|__|__|
+    // ------helps-----
+
+    vita2d_draw_rectangle(ITEMS_PANEL_LEFT, ITEMS_PANEL_TOP,
+                          ITEMS_PANEL_WIDTH, ITEMS_PANEL_HEIGHT, BLACK);
+
+    //draw icons
+    //appinfo *tmp = curr;
+    //i = 0;
+
+    for (int i = 0; curr && i < (ITEM_COL * ITEM_ROW); i++, curr = curr->next) {
+        load_icon(curr);
+        draw_icon(&curr->icon, i / ITEM_COL, i % ITEM_COL);
+    }
+}
+
+void draw_button(int left, int top, int width, int height, const char *text, float zoom,
+                 int pressed) {
+    // TODO render more looking button
+    int text_color;
+    if (pressed) {
+        vita2d_draw_rectangle(left, top, width, height, BLACK);
+        vita2d_draw_rectangle(left + 4, top + 4, width - 5, height - 5, LIGHT_GRAY);
+        text_color = WHITE;
     } else {
-        draw_text(0, "Cleaning up old data...", white);
-        snprintf(backup, 256, "%s.orig", info.eboot);
-        ret = sceIoRemove(info.eboot);
-        if (ret < 0) {
-            draw_text(1, "Error", red);
-            goto exit;
-        }
-        draw_text(1, "Done", white);
-        draw_text(3, "Restoring eboot", white);
-        ret = sceIoRename(backup, info.eboot);
-        if (ret < 0) {
-            draw_text(4, "Error", red);
-            goto exit;
-        }
-        draw_text(4, "Done", white);
-        ret = 0;
+        vita2d_draw_rectangle(left, top, width, height, BLACK);
+        vita2d_draw_rectangle(left + 1, top + 1, width - 5, height - 5, WHITE);
+        text_color = BLACK;
     }
+    int text_width = vita2d_pgf_text_width(font, zoom, text);
+    int text_height = vita2d_pgf_text_height(font, zoom, text);
+    int text_left_margin = (width - text_width) / 2;
+    int text_top_margin = (height - text_height) / 2;
+
+    vita2d_pgf_draw_text(font,
+                         left + text_left_margin,
+                         top + text_top_margin + text_height,
+                         text_color, zoom, text);
+}
+
+void draw_appinfo_icon(icon_data *icon) {
+    float w = vita2d_texture_get_width(icon->texture);
+    float h = vita2d_texture_get_height(icon->texture);
+    float z0 = APPINFO_ICON_WIDTH / w;
+    float z1 = APPINFO_ICON_HEIGHT / h;
+    float zoom = z0 < z1 ? z0 : z1;
+
+    vita2d_draw_texture_scale_rotate_hotspot(icon->texture,
+        APPINFO_ICON_LEFT + (APPINFO_ICON_WIDTH / 2),
+        APPINFO_ICON_TOP + (APPINFO_ICON_HEIGHT / 2),
+        zoom, zoom,
+        0,
+        w / 2,
+        h / 2
+    );
+}
+
+void draw_appinfo(ScreenState state, appinfo *info) {
+    // __________tm_bat
+    // |name |_|__|__|
+    // |...  |_|__|__|
+    // |...  |_|__|__|
+    // |_____|_|__|__|
+    // ------helps-----
+
+    // .--------------------------------------
+    // | icon  | backup   |
+    // |       | restore  |
+    // |       | format   |
+    // |       | ...      |
+    // |------------------|
+    // | title id         |
+    // | title            |
+    // | cart /dl         |
+    // | save position    |
+    // | ...              |
+    // '---------------------------------------
+    vita2d_draw_rectangle(APPINFO_PANEL_LEFT, APPINFO_PANEL_TOP,
+                          APPINFO_PANEL_WIDTH, APPINFO_PANEL_HEIGHT, WHITE);
+
+    draw_appinfo_icon(&info->icon);
+
+    draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(0),
+                APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
+                "BACKUP", 1.0,
+                (state >= BACKUP_MODE && state <= BACKUP_FAIL));
+
+    draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(1),
+                APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
+                "RESTORE", 1.0,
+                (state >= RESTORE_MODE && state <= RESTORE_FAIL));
+
+    draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(2),
+                APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
+                "DELETE", 1.0,
+                (state >= DELETE_MODE && state <= DELETE_FAIL));
+
+    draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(3),
+                APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
+                "FORMAT", 1.0,
+                (state >= FORMAT_MODE && state <=FORMAT_FAIL));
+
+    vita2d_draw_rectangle(APPINFO_DESC_LEFT, APPINFO_DESC_TOP,
+                          APPINFO_DESC_WIDTH, APPINFO_DESC_HEIGHT,
+                          LIGHT_SLATE_GRAY);
+
+    vita2d_pgf_draw_text(font,
+                         APPINFO_DESC_LEFT + APPINFO_DESC_PADDING,
+                         APPINFO_DESC_TOP + APPINFO_DESC_PADDING + 20,
+                         BLACK, 1.0, info->title);
+    vita2d_pgf_draw_text(font,
+                         APPINFO_DESC_LEFT + APPINFO_DESC_PADDING,
+                         APPINFO_DESC_TOP + APPINFO_DESC_PADDING + 40,
+                         BLACK, 1.0, info->title_id);
+
+    char *savedir = save_dir_path(info);
+    char *buf = calloc(sizeof(char), 1);
+    aprintf(&buf, "save dir: %s", savedir ? savedir : "need to start game before action");
+
+    vita2d_pgf_draw_text(font,
+                         APPINFO_DESC_LEFT + APPINFO_DESC_PADDING,
+                         APPINFO_DESC_TOP + APPINFO_DESC_PADDING + 80,
+                         BLACK, 1.0, buf);
+    if (savedir) {
+        free(savedir);
+    }
+    if (buf) {
+        free(buf);
+    }
+}
+
+char *load_slot_string(const appinfo *info, int slot) {
+    char *ret = NULL;
+    char *fn = slot_sfo_path(info, slot);
+    if (!exists(fn)) {
+        goto exit;
+    }
+    SceIoStat stat = {0};
+    sceIoGetstat(fn, &stat);
+    SceDateTime time;
+    SceRtcTick tick_utc;
+    SceRtcTick tick_local;
+    sceRtcGetTick(&stat.st_mtime, &tick_utc);
+    sceRtcConvertUtcToLocalTime(&tick_utc, &tick_local);
+    sceRtcSetTick(&time, &tick_local);
+
+    ret = calloc(sizeof(char), 1);
+    aprintf(&ret, "%04d-%02d-%02d %02d:%02d:%02d",
+             time.year, time.month, time.day, time.hour, time.minute, time.second);
+
 exit:
-    draw_end();
-    unlock_psbutton();
+    free(fn);
     return ret;
 }
 
-int migrate_simple_rincheat_save() {
-    char rindir_format[256];
-    char old_savedir[256];
-    snprintf(rindir_format, 256, "ux0:%s/%s",
-             OLD_RINCHEAT_SAVEDIR, OLD_RINCHEAT_SAVE_FORMAT);
-    snprintf(old_savedir, 256, rindir_format, app_titleid);
-    if (!is_dir(old_savedir)) {
-        return 0;
-    }
-    char new_dir[buf_length];
-    for (int i = 0; i < 10; i++) {
-        snprintf(new_dir, buf_length, config.full_path_format, app_titleid, i);
-        if (is_dir(new_dir)) {
-            continue;
+void draw_slots(appinfo *info, int slot) {
+    // __________tm_bat
+    // |name |=======|
+    // |...  |=======|
+    // |...  |..     |
+    // |_____|_______|
+    // ------helps-----
+
+    // .--------------------------------------
+    // | icon  | backup   | slot0
+    // |       | restore  | slot1
+    // |       | format   |
+    // |       | ...      |  ..
+    // |------------------|
+    // | title id         |
+    // | title            |
+    // | cart /dl         |
+    // | save position    |
+    // | ...              | slot9
+    // '---------------------------------------
+    vita2d_draw_rectangle(SLOT_PANEL_LEFT, SLOT_PANEL_TOP,
+                          SLOT_PANEL_WIDTH, SLOT_PANEL_HEIGHT, WHITE);
+
+    for (int i = 0; i < SLOT_BUTTON; i++) {
+        char *slot_string = load_slot_string(info, i);
+
+        draw_button(SLOT_BUTTON_LEFT, SLOT_BUTTON_TOP(i),
+                    SLOT_BUTTON_WIDTH, SLOT_BUTTON_HEIGHT,
+                    slot_string ? slot_string : "empty", 1.0,
+                    (slot == i));
+
+        if (slot_string) {
+            free(slot_string);
         }
-        mvdir(old_savedir, new_dir);
-        return 1;
     }
-    // TODO remove older remain save
-    return -1;
 }
 
-int migrate_rincheat_slot_saves() {
-    char rindir_format[256];
-    char old_savedir[256];
-    char new_dir[buf_length];
-    snprintf(rindir_format, 256, "ux0:%s/%s",
-             OLD_RINCHEAT_SAVEDIR, OLD_RINCHEAT_SAVE_SLOT_FORMAT);
-    for (int i = 0; i < 10; i++) {
-        snprintf(old_savedir, 256, rindir_format, app_titleid, i);
-        if (!is_dir(old_savedir)) {
-            continue;
+// TODO support multi line
+char* error_message(ProcessError error) {
+    switch (error) {
+        case NO_ERROR:
+            return "NO ERROR";
+        case ERROR_NO_SAVE_DIR:
+            return "Could not find save directory";
+        case ERROR_NO_SLOT_DIR:
+            return "Could not find backup slot";
+        case ERROR_MEMORY_ALLOC:
+            return "Allocated memory exceeded";
+        case ERROR_DECRYPT_DIR:
+            return "Invalid license";
+        case ERROR_COPY_DIR:
+            return "Could not copy directory";
+        default:
+            return "UNKNOWN";
+    }
+}
+
+void init_input() {
+    sceCtrlSetSamplingMode(SCE_CTRL_MODE_ANALOG_WIDE);
+    sceTouchSetSamplingState(SCE_TOUCH_PORT_FRONT, SCE_TOUCH_SAMPLING_STATE_START);
+}
+
+#define IN_RANGE(start, end, value) (start < value && value < end)
+#define IS_TOUCHED(rect, pt) \
+    (IN_RANGE(rect.left, rect.right, pt.x) && IN_RANGE(rect.top, rect.bottom, pt.y))
+
+ScreenState on_mainscreen_event(int steps, int *step, appinfo **curr,
+                                appinfo **touched) {
+    int btn = read_buttons();
+
+    if (btn & SCE_CTRL_HOLD) {
+        return UNKNOWN;
+    }
+
+    if (btn & SCE_CTRL_UP) {
+        if (*step == 0) {
+            return UNKNOWN;
         }
-        for (int j = 0; j < 10; j++) {
-            snprintf(new_dir, buf_length,
-                     config.full_path_format, app_titleid, j);
-            if (is_dir(new_dir)) {
-                continue;
+        *step -= 1;
+        for (int i = 0; i < ITEM_COL; i++, *curr = (*curr)->prev) {
+            unload_icon(*curr);
+        }
+        return MAIN_SCREEN;
+    }
+    if (btn & SCE_CTRL_DOWN) {
+        if (*step == steps) {
+            return UNKNOWN;
+        }
+        *step += 1;
+        for (int i = 0; i < ITEM_COL; i++, *curr = (*curr)->next) {
+            unload_icon(*curr);
+        }
+        return MAIN_SCREEN;
+    }
+
+    point p;
+    if (!read_touchscreen(&p)) {
+        return UNKNOWN;
+    }
+
+    appinfo *tmp = *curr;
+    for (int i = 0; tmp && i < (ITEM_COL * ITEM_ROW); i++, tmp = tmp->next) {
+        if (IS_TOUCHED(tmp->icon.touch_area, p)) {
+            *touched = tmp;
+            return PRINT_APPINFO;
+        }
+    }
+
+    return UNKNOWN;
+}
+
+#define APPINFO_BUTTON_AREA(n) \
+    { \
+        .left = APPINFO_BUTTON_LEFT, \
+        .top = APPINFO_BUTTON_TOP(n), \
+        .right = APPINFO_BUTTON_LEFT + APPINFO_BUTTON_WIDTH, \
+        .bottom = APPINFO_BUTTON_TOP(n) + APPINFO_BUTTON_HEIGHT, \
+    }
+
+ScreenState on_appinfo_button_event(point p) {
+    static rectangle backup_button_area = APPINFO_BUTTON_AREA(0);
+    static rectangle restore_button_area = APPINFO_BUTTON_AREA(1);
+    static rectangle delete_button_area = APPINFO_BUTTON_AREA(2);
+    static rectangle reset_button_area = APPINFO_BUTTON_AREA(3);
+    if (IS_TOUCHED(backup_button_area, p)) {
+        return BACKUP_MODE;
+    }
+
+    if (IS_TOUCHED(restore_button_area, p)) {
+        return RESTORE_MODE;
+    }
+
+    if (IS_TOUCHED(delete_button_area, p)) {
+        return DELETE_MODE;
+    }
+
+    if (IS_TOUCHED(reset_button_area, p)) {
+        return FORMAT_MODE;
+    }
+
+    return UNKNOWN;
+}
+
+#undef APPINFO_BUTTON_AREA
+
+ScreenState on_appinfo_event() {
+    static rectangle appinfo_area = {
+        .left = APPINFO_PANEL_LEFT,
+        .top = APPINFO_PANEL_TOP,
+        .right = APPINFO_PANEL_LEFT + APPINFO_PANEL_WIDTH,
+        .bottom = APPINFO_PANEL_TOP + APPINFO_PANEL_HEIGHT,
+    };
+
+    int btn = read_buttons();
+
+    if (!(btn & SCE_CTRL_HOLD) && btn & SCE_CTRL_CANCEL) {
+        return MAIN_SCREEN;
+    }
+    // TODO
+
+    point p;
+    if (!read_touchscreen(&p)) {
+        return UNKNOWN;
+    }
+
+    if (!IS_TOUCHED(appinfo_area, p)) {
+        return MAIN_SCREEN;
+    }
+
+    return on_appinfo_button_event(p);
+}
+
+ScreenState on_slot_event(int *slot) {
+    *slot = -1;
+    int btn = read_buttons();
+
+    if (!(btn & SCE_CTRL_HOLD) && btn & SCE_CTRL_CANCEL) {
+        return PRINT_APPINFO;
+    }
+
+    point p;
+    if (!read_touchscreen(&p)) {
+        return UNKNOWN;
+    }
+
+    ScreenState move_appinfo_action = on_appinfo_button_event(p);
+    if (move_appinfo_action != UNKNOWN) {
+        return move_appinfo_action;
+    }
+
+    for (int i = 0; i < SLOT_BUTTON; i++) {
+        rectangle slot_area = {
+            .left = SLOT_BUTTON_LEFT,
+            .top = SLOT_BUTTON_TOP(i),
+            .right = SLOT_BUTTON_LEFT + SLOT_BUTTON_WIDTH,
+            .bottom = SLOT_BUTTON_TOP(i) + SLOT_BUTTON_HEIGHT,
+        };
+        if (IS_TOUCHED(slot_area, p)) {
+            *slot = i;
+            return UNKNOWN;
+        }
+    }
+    return UNKNOWN;
+}
+
+int copy_savedata_to_slot(appinfo *info, int slot) {
+    int res = NO_ERROR;
+    char *src = save_dir_path(info);
+    char *dest = slot_dir_path(info, slot);
+
+    debugNetPrintf(DEBUG, "src: %s\n", src);
+    debugNetPrintf(DEBUG, "dest: %s\n", dest);
+
+    if (!src) {
+        // TODO: need popup; need start game
+        res = ERROR_NO_SAVE_DIR;
+        goto exit;
+    }
+    if (!dest) {
+        res = ERROR_MEMORY_ALLOC;
+        goto exit;
+    }
+
+    lock_psbutton();
+    if (pfs_mount(src) < 0) {
+        res = ERROR_DECRYPT_DIR;
+        goto exit;
+    }
+    mkdir(dest, 0777);
+
+    init_progress(file_count(src, 1));
+    if (copydir(src, dest, incr_progress) < 0) {
+        res = ERROR_COPY_DIR;
+        goto exit;
+    }
+exit:
+    pfs_unmount();
+    unlock_psbutton();
+    if (src) {
+        free(src);
+    }
+    if (dest) {
+        free(dest);
+    }
+    return res;
+}
+
+int copy_slot_to_savedata(appinfo *info, int slot) {
+    int res = 0;
+    char *src = slot_dir_path(info, slot);
+    char *dest = save_dir_path(info);
+
+    debugNetPrintf(DEBUG, "src: %s\n", src);
+    debugNetPrintf(DEBUG, "dest: %s\n", dest);
+
+    if (!dest) {
+        res = ERROR_NO_SAVE_DIR;
+        goto exit;
+    }
+
+    if (!src) {
+        res = ERROR_MEMORY_ALLOC;
+        goto exit;
+    }
+    if (!exists(src)) {
+        res = ERROR_NO_SLOT_DIR;
+        goto exit;
+    }
+
+    lock_psbutton();
+    if (pfs_mount(dest) < 0) {
+        res = ERROR_DECRYPT_DIR;
+        goto exit;
+    }
+
+    mkdir(dest, 0777);
+
+    init_progress(file_count(src, 1));
+    if (copydir(src, dest, incr_progress) < 0) {
+        res = ERROR_COPY_DIR;
+        goto exit;
+    }
+
+exit:
+    pfs_unmount();
+    unlock_psbutton();
+    if (src) {
+        free(src);
+    }
+    if (dest) {
+        free(dest);
+    }
+    return res;
+}
+
+int delete_slot(appinfo *info, int slot) {
+    int res = NO_ERROR;
+    char *target = slot_dir_path(info, slot);
+
+    debugNetPrintf(DEBUG, "target: %s\n", target);
+
+    if (!target) {
+        res = ERROR_MEMORY_ALLOC;
+        goto exit;
+    }
+
+    if (!exists(target)) {
+        res = ERROR_NO_SLOT_DIR;
+        goto exit;
+    }
+    lock_psbutton();
+    // TODO progress bar
+    init_progress(file_count(target, 0));
+    rmdir(target, incr_progress);
+exit:
+    unlock_psbutton();
+    if (target) {
+        free(target);
+    }
+    return res;
+}
+
+int format_savedata(appinfo *info) {
+    int res = NO_ERROR;
+    char *target = save_dir_path(info);
+    if (!target) {
+        res = ERROR_MEMORY_ALLOC;
+        goto exit;
+    }
+    if (!exists(target)) {
+        res = ERROR_NO_SAVE_DIR;
+        goto exit;
+    }
+    lock_psbutton();
+    init_progress(file_count(target, 0));
+    rmdir(target, incr_progress);
+exit:
+    unlock_psbutton();
+    if (target) {
+        free(target);
+    }
+    return res;
+}
+
+void draw_screen(ScreenState state, appinfo *curr, appinfo *choose, int slot) {
+    for (int i = 0; i < 3; i++) {
+        vita2d_start_drawing();
+        vita2d_clear_screen();
+
+        if (state >= MAIN_SCREEN) {
+            //vita2d_draw_rectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, BLACK);
+            //vita2d_draw_line(0, HEADER_HEIGHT, SCREEN_WIDTH, HEADER_HEIGHT, WHITE);
+            //draw header
+
+            //draw footer
+            draw_icons(curr);
+        }
+
+        if (state >= PRINT_APPINFO) {
+            draw_appinfo(state, choose);
+        }
+
+        switch (state) {
+            case BACKUP_MODE:
+            case RESTORE_MODE:
+            case DELETE_MODE:
+                draw_slots(choose, -1);
+                break;
+            case BACKUP_CONFIRM:
+            case BACKUP_PROGRESS:
+            case BACKUP_FAIL:
+            case RESTORE_CONFIRM:
+            case RESTORE_PROGRESS:
+            case RESTORE_FAIL:
+            case DELETE_CONFIRM:
+            case DELETE_PROGRESS:
+            case DELETE_FAIL:
+                draw_slots(choose, slot);
+                break;
+            case FORMAT_MODE:
+            case FORMAT_CONFIRM:
+            case FORMAT_PROGRESS:
+            case FORMAT_FAIL:
+                // TODO
+                break;
+            default:
+                break;
+        }
+
+        vita2d_end_drawing();
+        vita2d_wait_rendering_done();
+        vita2d_swap_buffers();
+    }
+}
+
+ScreenState noslot_state_machine(appinfo *curr, appinfo *choose,
+                                 ScreenState confirm_state,
+                                 ScreenState progress_state,
+                                 ScreenState fail_state,
+                                 ScreenState exit_state,
+                                 const char *confirm_msg,
+                                 int (*progress_func)(appinfo*)) {
+    // this hook will skip choice slot state
+    ScreenState state = confirm_state;
+    int last_error = NO_ERROR;
+    while (1) {
+        draw_screen(state, curr, choose, -1);
+        ScreenState new_state = UNKNOWN;
+        if (state == confirm_state) {
+            new_state = confirm(confirm_msg, 1.0) == CONFIRM
+                      ? progress_state
+                      : exit_state;
+        } else if (state == progress_state) {
+            last_error = progress_func(choose);
+            new_state = last_error != NO_ERROR ? fail_state : exit_state;
+        } else if (state == fail_state) {
+            alert(error_message(last_error), 1.0);
+            new_state = exit_state;
+        } else {
+            return state;
+        }
+        if (new_state != UNKNOWN) {
+            state = new_state;
+        }
+    }
+}
+
+ScreenState slot_state_machine(appinfo *curr, appinfo *choose,
+                               ScreenState start_state,
+                               ScreenState confirm_state,
+                               ScreenState progress_state,
+                               ScreenState fail_state,
+                               const char *confirm_msg,
+                               int (*progress_func)(appinfo*, int)) {
+    int slot = -1;
+    ScreenState state = start_state;
+    int last_error = NO_ERROR;
+    while (1) {
+        draw_screen(state, curr, choose, slot);
+        ScreenState new_state = UNKNOWN;
+        if (state == start_state) {
+            new_state = on_slot_event(&slot);
+            if (new_state == UNKNOWN && slot >= 0) {
+                new_state = confirm_state;
             }
-            mvdir(old_savedir, new_dir);
-            break;
+        } else if (state == confirm_state) {
+            char *tmp = calloc(sizeof(char), 1);
+            aprintf(&tmp, confirm_msg, slot);
+            new_state = confirm(tmp, 1.0) == CONFIRM
+                      ? progress_state
+                      : start_state;
+            free(tmp);
+        } else if (state == progress_state) {
+            last_error = progress_func(choose, slot);
+            new_state = last_error != NO_ERROR ? fail_state : start_state;
+        } else if (state == fail_state) {
+            alert(error_message(last_error), 1.0);
+            new_state = start_state;
+        } else {
+            return state;
+        }
+        if (new_state != UNKNOWN) {
+            state = new_state;
         }
     }
-    // TODO remove older remain saves
-    return -1;
 }
-
-void print_game_list(appinfo *head, appinfo *tail, appinfo *curr) {
-    appinfo *tmp = head;
-    int i = 2;
-    while (tmp) {
-        snprintf(buf, 256, "%s: %s", tmp->title_id, tmp->title);
-        draw_loop_text(i, buf, curr == tmp ? green : white);
-        if (tmp == tail) {
-            break;
-        }
-        tmp = tmp->next;
-        i++;
-    }
-}
-
-void make_save_slot_string(int slot) {
-    char fn[buf_length];
-    snprintf(fn, buf_length,
-             concat(config.full_path_format, "/sce_sys/param.sfo"), app_titleid, slot);
-    char date[20] = {0};
-    if (!exists(fn)) {
-        snprintf(date, 20, "none");
-    } else {
-        SceIoStat stat = {0};
-        sceIoGetstat(fn, &stat);
-
-        SceDateTime time;
-        SceRtcTick tick_utc;
-        SceRtcTick tick_local;
-        sceRtcGetTick(&stat.st_mtime, &tick_utc);
-        sceRtcConvertUtcToLocalTime(&tick_utc, &tick_local);
-        sceRtcSetTick(&time, &tick_local);
-
-        snprintf(date, 20, "%04d-%02d-%02d %02d:%02d:%02d",
-                 time.year, time.month, time.day, time.hour, time.minute, time.second);
-    }
-    snprintf(buf, 256, "Slot %d - %s", slot, date);
-}
-void print_save_slots(int curr_slot) {
-    int r = 4;
-    for (int i = 0; i < 10; i++) {
-        make_save_slot_string(i);
-        draw_loop_text(r + i, buf, curr_slot == i ? green : white);
-    }
-}
-
-#define DO_NOT_CLOSE_POPUP() \
-    do { \
-        popup_line lines[] = { \
-            {.string="DO NOT CLOSE APPLICATION MANUALLY!", \
-             .padding={20, 0, 20, 0}, .color=orange}, \
-            {0}, \
-        }; \
-        open_popup(WARNING, lines); \
-    } while (0)
-
-#define ERROR_POPUP(msg) \
-    do { \
-        popup_line lines[] = { \
-            {.string=""}, \
-            {.string=(msg), .color=red}, \
-            {.string=""}, \
-            {0}, \
-        }; \
-        open_popup(ERROR, lines); \
-    } while (0); \
-    do { \
-        btn = read_btn(); \
-    } while (btn != SCE_CTRL_ENTER); \
-    close_popup()
-
-#define ERROR_POPUP2(msg1, msg2) \
-    do { \
-        popup_line lines[] = { \
-            {.string=""}, \
-            {.string=(msg1), .color=red}, \
-            {.string=(msg2), .color=white}, \
-            {.string=""}, \
-            {0}, \
-        }; \
-        open_popup(ERROR, lines); \
-    } while (0); \
-    do { \
-        btn = read_btn(); \
-    } while (btn != SCE_CTRL_ENTER); \
-    close_popup()
-
-#define ERROR_CODE_POPUP(code) \
-    do { \
-        snprintf(buf, 256, "Error 0x%08X", ret); \
-        ERROR_POPUP(buf); \
-    } while (0)
-
-int injector_main() {
-    char version_string[256];
-    snprintf(version_string, 256, "Vita Save Manager %s", VERSION);
-
+void mainloop() {
     applist list = {0};
-
-    ret = get_applist(&list);
+    int ret = get_applist(&list);
     if (ret < 0) {
-        draw_start();
-
-        snprintf(buf, 256, "Initialization error, %x", ret);
-        draw_text(0, buf, red);
-
-        draw_end();
-
-        while (read_btn());
-        return -1;
+        // loading error
+        return;
     }
-    appinfo *head, *tail, *curr;
+
+    int steps = (list.count / ITEM_COL) - ITEM_ROW;
+    if (steps < 0) {
+        steps = 0;
+    }
+
+    appinfo *head, *tail, *curr, *choose;
     curr = head = tail = list.items;
 
-    int i = 0;
+    int step = 0;
+
     while (tail->next) {
-        i++;
-        if (i == PAGE_ITEM_COUNT) {
-            break;
-        }
         tail = tail->next;
     }
 
-    int state = INJECTOR_MAIN;
-
-    cleanup_prev_inject(&list);
-
-#define draw_game_list() \
-    do { \
-        draw_loop_text(0, version_string, white); \
-        print_game_list(head, tail, curr); \
-        draw_loop_text(25, concat(ICON_UPDOWN, " - Select Item"), white); \
-        draw_loop_text(26, concat(ICON_CANCEL, " - Exit"), white); \
-    } while (0)
-
+    ScreenState state = MAIN_SCREEN;
+    int slot = -1;
     while (1) {
-        draw_start();
-
-        switch (state) {
-            case INJECTOR_MAIN:
-                draw_game_list();
-
-                btn = read_btn();
-                if (btn == SCE_CTRL_ENTER) {
-                    state = INJECTOR_TITLE_SELECT;
+        draw_screen(state, curr, choose, slot);
+        ScreenState new_state = UNKNOWN;
+        while (1) {
+            switch (state) {
+                case MAIN_SCREEN:
+                    new_state = on_mainscreen_event(steps, &step, &curr, &choose);
                     break;
-                }
-                if (btn == SCE_CTRL_CANCEL) {
-                    state = INJECTOR_EXIT;
+                case PRINT_APPINFO:
+                    new_state = on_appinfo_event();
                     break;
-                }
-                if ((btn & SCE_CTRL_UP) && curr->prev) {
-                    if (curr == head) {
-                        head = head->prev;
-                        tail = tail->prev;
-                    }
-                    curr = curr->prev;
+                case BACKUP_MODE:
+                    new_state = slot_state_machine(curr, choose,
+                                                   BACKUP_MODE, BACKUP_CONFIRM,
+                                                   BACKUP_PROGRESS, BACKUP_FAIL,
+                                                   "Backup savedata to slot %d",
+                                                   copy_savedata_to_slot);
                     break;
-                }
-                if ((btn & SCE_CTRL_DOWN) && curr->next) {
-                    if (curr == tail) {
-                        tail = tail->next;
-                        head = head->next;
-                    }
-                    curr = curr->next;
+                case RESTORE_MODE:
+                    new_state = slot_state_machine(curr, choose,
+                                                   RESTORE_MODE, RESTORE_CONFIRM,
+                                                   RESTORE_PROGRESS, RESTORE_FAIL,
+                                                   "Restore savedata from slot %d",
+                                                   copy_slot_to_savedata);
                     break;
-                }
-                break;
-            case INJECTOR_TITLE_SELECT:
-                draw_game_list();
-
-                do {
-                    popup_line lines[] = {
-                        {.string="Start save dumper?", .color=green},
-                        {.string=""},
-                        {.string="Selected:", .color=white},
-                        {.string=curr->title_id, .padding={0, 0, 0, 20}, .color=white},
-                        {.string=curr->title, .padding={0, 0, 0, 20}, .color=white},
-                        {0},
-                    };
-
-                    draw_popup(CONFIRM_AND_CANCEL, lines);
-                } while (0);
-
-                btn = read_btn();
-                if (btn == SCE_CTRL_ENTER) {
-                    state = INJECTOR_START_DUMPER;
-                } else if (btn == SCE_CTRL_CANCEL) {
-                    state = INJECTOR_MAIN;
-                }
-                break;
-            case INJECTOR_START_DUMPER:
-                lock_psbutton();
-                clear_screen();
-                draw_text(0, version_string, white);
-
-                char backup[256];
-
-                // cartridge & digital encrypted games
-                if (!exists(curr->eboot)) {
-                    unlock_psbutton();
-                    if (strcmp(curr->dev, "gro0") == 0) {
-                        //draw_text(2, "Cartridge not inserted", red);
-                        ERROR_POPUP("Cartridge not inserted");
-                    } else {
-                        //draw_text(2, "Cannot find game", red);
-                        ERROR_POPUP("Cannot find game");
-                    }
-                    state = INJECTOR_MAIN;
+                case DELETE_MODE:
+                    new_state = slot_state_machine(curr, choose,
+                                                   DELETE_MODE, DELETE_CONFIRM,
+                                                   DELETE_PROGRESS, DELETE_FAIL,
+                                                   "Delete save slot %d",
+                                                   delete_slot);
                     break;
-                }
+                case FORMAT_MODE:
+                    new_state = noslot_state_machine(curr, choose,
+                                                     FORMAT_CONFIRM,
+                                                     FORMAT_PROGRESS,
+                                                     FORMAT_FAIL,
+                                                     PRINT_APPINFO,
+                                                     "Format game savedata",
+                                                     format_savedata);
+                    break;
+                default:
+                    break;
+            }
+            if (new_state == UNKNOWN) {
+                continue;
+            }
 
-                if (is_encrypted_eboot(curr->eboot)) {
-                    char patch[256];
-                    draw_text(2, "Injecting (encrypted game)...", white);
-                    sprintf(patch, "ux0:patch/%s", curr->title_id);
-                    sprintf(backup, "ux0:patch/%s_orig", curr->title_id);
-
-                    snprintf(buf, 255, "%s/eboot.bin", patch);
-                    // need to backup patch dir
-                    if (is_dir(patch) && !is_dumper_eboot(buf)) {
-                        snprintf(buf, 255, "Backing up %s to %s...", patch, backup);
-                        draw_text(4, buf, white);
-                        rmdir(backup);
-                        ret = mvdir(patch, backup);
-                        if (ret < 0) {
-                            unlock_psbutton();
-                            ERROR_CODE_POPUP(ret);
-                            state = INJECTOR_MAIN;
-                            break;
-                        }
-                        draw_text(5, "Done", green);
-                    }
-
-                    // inject dumper to patch
-                    snprintf(buf, 255, "Installing dumper to %s...", patch);
-                    draw_text(7, buf, white);
-                    ret = copydir("ux0:app/SAVEMGR00", patch);
-                    // TODO restore patch
-                    if (ret < 0) {
-                        unlock_psbutton();
-                        ERROR_CODE_POPUP(ret);
-                        state = INJECTOR_MAIN;
-                        break;
-                    }
-                    draw_text(8, "Done", green);
-
-                    snprintf(patch, 255, "ux0:patch/%s/sce_sys/param.sfo", curr->title_id);
-                    //Restoring or Copying?
-                    snprintf(buf, 255, "Copying param.sfo to %s...", patch);
-                    draw_text(10, buf, white);
-
-                    snprintf(buf, 255, "%s:app/%s/sce_sys/param.sfo", curr->dev, curr->title_id);
-                    ret = copyfile(buf, patch);
-
-                    if (ret < 0) {
-                        unlock_psbutton();
-                        ERROR_CODE_POPUP(ret);
-                        state = INJECTOR_MAIN;
-                        break;
-                    }
-                    draw_text(11, "Done", green);
-                } else {
-                    draw_text(2, "Injecting (decrypted game)...", white);
-                    ret = -1;
-
-                    if (strcmp(curr->dev, "gro0") == 0) {
-                        unlock_psbutton();
-                        ERROR_POPUP2("Game not supported", "Please send a bug report on github");
-                        state = INJECTOR_MAIN;
-                        break;
-                    }
-
-                    // vitamin or digital
-                    snprintf(backup, 256, "%s.orig", curr->eboot);
-                    snprintf(buf, 255, "Backing up %s to %s...", curr->eboot, backup);
-                    draw_text(4, buf, white);
-                    ret = sceIoRename(curr->eboot, backup);
-
-                    if (ret < 0) {
-                        unlock_psbutton();
-                        ERROR_CODE_POPUP(ret);
-                        state = INJECTOR_MAIN;
-                        break;
-                    }
-                    draw_text(5, "Done", green);
-
-                    snprintf(buf, 255, "Installing dumper to %s...", curr->eboot);
-                    draw_text(7, buf, white);
-                    ret = copyfile("ux0:app/SAVEMGR00/eboot.bin", curr->eboot);
-                    // TODO if error, need restore eboot
-
-                    if (ret < 0) {
-                        unlock_psbutton();
-                        ERROR_CODE_POPUP(ret);
-                        state = INJECTOR_MAIN;
-                        break;
-                    }
-                    draw_text(8, "Done", green);
-                }
-
-                // backup for next cleanup
-                int fd = sceIoOpen(TEMP_FILE, SCE_O_WRONLY | SCE_O_CREAT,0777);
-                sceIoWrite(fd, curr, sizeof(appinfo));
-                sceIoClose(fd);
-
-                DO_NOT_CLOSE_POPUP();
-
-                // wait 3sec
-                sceKernelDelayThread(3000000);
-
-                close_popup();
-
-                draw_text(15, "Starting dumper...", green);
-
-                // TODO store state
-                launch(curr->title_id);
-                break;
-            case INJECTOR_EXIT:
-                draw_end();
-                return 0;
+            state = new_state;
+            break;
         }
-
-        draw_end();
-    }
-}
-
-int dumper_main() {
-    lock_psbutton();
-
-    int state = DUMPER_MAIN;
-
-    char save_dir[256], backup_dir[buf_length];
-
-    char version_string[256];
-    snprintf(version_string, 256, "Vita Save Manager %s", VERSION);
-
-    appinfo info;
-
-    int fd = sceIoOpen(TEMP_FILE, SCE_O_RDONLY, 0777);
-
-    if (fd < 0) {
-        draw_start();
-
-        ERROR_POPUP("Cannot find inject data");
-        state = DUMPER_EXIT;
-
-        draw_end();
-        launch(SAVE_MANAGER);
-        return -1;
-    }
-
-    sceIoRead(fd, &info, sizeof(appinfo));
-    sceIoClose(fd);
-
-    if (strcmp(info.title_id, app_titleid) != 0) {
-        draw_start();
-
-        ERROR_POPUP("Wrong inject information");
-        state = DUMPER_EXIT;
-
-        draw_end();
-        launch(SAVE_MANAGER);
-        return -2;
-    }
-
-    if (strcmp(info.title_id, info.real_id) == 0) {
-        sprintf(save_dir, "savedata0:");
-    } else {
-        sprintf(save_dir, "ux0:user/00/savedata/%s", info.real_id);
-    }
-
-    migrate_rincheat_slot_saves();
-    if (strcmp(config.base, OLD_RINCHEAT_SAVEDIR) != 0 ||
-            strcmp(config.slot_format, OLD_RINCHEAT_SAVE_SLOT_FORMAT) != 0) {
-        migrate_simple_rincheat_save();
-    }
-
-    int slot = 0;
-
-#define draw_dumper_header() \
-    draw_text(0, version_string, white); \
-    draw_text(2, "DO NOT CLOSE APPLICATION MANUALLY!", orange);
-
-#define draw_save_stot() \
-    do { \
-        draw_loop_text(0, version_string, white); \
-        draw_loop_text(2, "DO NOT CLOSE APPLICATION MANUALLY!", orange); \
-        print_save_slots(slot); \
-        draw_loop_text(25, concat(ICON_UPDOWN, " - Select Slot"), white); \
-        draw_loop_text(26, concat(ICON_CANCEL, " - Exit"), white); \
-    } while (0)
-
-    while (1) {
-        draw_start();
-
-        snprintf(backup_dir, buf_length, config.full_path_format, info.title_id, slot);
-
-        switch (state) {
-            case DUMPER_MAIN:
-                draw_save_stot();
-
-                btn = read_btn();
-                if (btn == SCE_CTRL_ENTER) {
-                    state = DUMPER_SLOT_SELECT;
-                    break;
-                }
-                if (btn == SCE_CTRL_CANCEL) {
-                    state = DUMPER_EXIT;
-                    break;
-                }
-                if (btn & (SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER)) {
-                    state = DUMPER_FORMAT;
-                    break;
-                }
-                if ((btn & SCE_CTRL_UP) && slot > 0) {
-                    slot -= 1;
-                    break;
-                }
-                if ((btn & SCE_CTRL_DOWN) && slot < 9) {
-                    slot += 1;
-                    break;
-                }
-                break;
-            case DUMPER_SLOT_SELECT:
-                draw_save_stot();
-
-                do {
-                    make_save_slot_string(slot);
-                    char *slot_msg = strdup(buf);
-                    char *dir_info = strdup(concat("Directory: ", backup_dir));
-
-                    snprintf(buf, 256, "%s Close    %s Drop    %s Restore    %s Backup",
-                             ICON_CANCEL, ICON_SQUARE, ICON_TRIANGLE, ICON_ENTER);
-                    popup_line lines[] = {
-                        {.string=slot_msg, .color=green},
-                        {.string=""},
-                        {.string=dir_info, .color=white},
-                        {.string=""},
-                        {.string=buf, .color=white, .align=CENTER},
-                        {0},
-                    };
-                    draw_popup(SIMPLE, lines);
-                    free(slot_msg);
-                    free(dir_info);
-                } while (0);
-
-                btn = read_btn();
-                if (btn == SCE_CTRL_ENTER) state = DUMPER_BACKUP;
-                if (btn == SCE_CTRL_TRIANGLE) state = DUMPER_RESTORE;
-                if (btn == SCE_CTRL_SQUARE) state = DUMPER_DROP;
-                if (btn == SCE_CTRL_CANCEL) state = DUMPER_MAIN;
-                break;
-            case DUMPER_BACKUP:
-                clear_screen();
-                draw_dumper_header();
-
-                snprintf(buf, 256, "Backing up to %s...", backup_dir);
-                draw_text(4, buf, white);
-                mkdir(backup_dir, 0777);
-                ret = copydir(save_dir, backup_dir);
-
-                if (ret < 0) {
-                    ERROR_CODE_POPUP(ret);
-                    state = DUMPER_SLOT_SELECT;
-                    break;
-                }
-                draw_text(5, "Done", green);
-
-                // wait 1sec
-                sceKernelDelayThread(1000000);
-
-                state = DUMPER_SLOT_SELECT;
-                break;
-            case DUMPER_RESTORE:
-                clear_screen();
-                draw_dumper_header();
-
-                if (!is_dir(backup_dir)) {
-                    ERROR_POPUP("Cannot find save data");
-                    state = DUMPER_SLOT_SELECT;
-                    break;
-                }
-
-                draw_text(4, "Remove old savedata0...", white);
-                ret = rm_savedir(save_dir);
-
-                draw_text(5, "Done", green);
-
-                snprintf(buf, 256, "Restoring from %s...", backup_dir);
-                draw_text(7, buf, white);
-                ret = copydir(backup_dir, "savedata0:");
-
-                if (ret < 0) {
-                    ERROR_CODE_POPUP(ret);
-                    state = DUMPER_SLOT_SELECT;
-                    break;
-                }
-                draw_text(8, "Done", green);
-
-                // wait 1sec
-                sceKernelDelayThread(1000000);
-
-                state = DUMPER_SLOT_SELECT;
-                break;
-            case DUMPER_DROP:
-                clear_screen();
-                draw_dumper_header();
-
-                if (!is_dir(backup_dir)) {
-                    ERROR_POPUP("Cannot find save data");
-                    state = DUMPER_SLOT_SELECT;
-                    break;
-                }
-
-                snprintf(buf, 256, "Remove %s...", backup_dir);
-                draw_text(4, buf, white);
-                ret = rmdir(backup_dir);
-                if (ret < 0) {
-                    ERROR_CODE_POPUP(ret);
-                    state = DUMPER_SLOT_SELECT;
-                    break;
-                }
-                draw_text(5, "Done", green);
-
-                // wait 1sec
-                sceKernelDelayThread(1000000);
-
-                state = DUMPER_SLOT_SELECT;
-                break;
-            case DUMPER_FORMAT:
-                draw_save_stot();
-
-                do {
-                    popup_line lines[] = {
-                        {.string="Format savedata", .color=red},
-                        {.string=""},
-                        {.string="This action cannot be cancellation", .color=white},
-                        {.string="Please have deep considering", .color=white},
-                        {.string="And must dump savedata before this action", .color=white},
-                        {0},
-                    };
-                    draw_popup(CONFIRM_AND_CANCEL, lines);
-                } while (0);
-
-                btn = read_btn();
-                if (btn == SCE_CTRL_CANCEL) {
-                    state = DUMPER_MAIN;
-                    break;
-                }
-                if (btn == SCE_CTRL_ENTER) {
-                    state = DUMPER_FORMAT_CONFIRM;
-                    break;
-                }
-                break;
-            case DUMPER_FORMAT_CONFIRM:
-                clear_screen();
-                draw_dumper_header();
-
-                snprintf(buf, 256, "Formatting...");
-                draw_text(4, "Formatting...", white);
-
-                ret = rm_savedir(save_dir);
-                if (ret < 0) {
-                    ERROR_CODE_POPUP(ret);
-                    state = DUMPER_SLOT_SELECT;
-                    break;
-                }
-
-                draw_text(5, "Done", green);
-
-                // wait 1sec
-                sceKernelDelayThread(1000000);
-
-                state = DUMPER_SLOT_SELECT;
-                break;
-            case DUMPER_EXIT:
-                launch(SAVE_MANAGER);
-                break;
-        }
-        draw_end();
     }
 }
 
 int main() {
+    debugNetInit(DEBUG_IP, 18194, DEBUG);
+
+    kernel_modid = taiLoadStartKernelModule("ux0:VitaShell/module/kernel.skprx",
+                                            0, NULL, 0);
+    user_modid = sceKernelLoadStartModule("ux0:VitaShell/module/user.suprx",
+                                          0, NULL, 0, NULL, NULL);
+
     vita2d_init();
-    init_console();
+    vita2d_set_clear_color(BLACK);
+
+    font = load_system_fonts();
+
     load_config();
-    sceShellUtilInitEvents(0);
 
-    buf_length = strlen(config.full_path_format) + 64;
-    buf = malloc(sizeof(char) * buf_length);
+    char *base_path = calloc(sizeof(char), 1);
+    aprintf(&base_path, "ux0:%s", config.base);
+    mkdir(base_path, 0777);
+    free(base_path);
+    mkdir("ux0:/data/savemgr", 0777);
 
-    mkdir(concat("ux0:", config.base), 0777);
-    sceIoMkdir("ux0:/data/savemgr", 0777);
+    sceAppMgrUmount("app0:");
+    sceAppMgrUmount("savedata0:");
 
-    if (strcmp(app_titleid, SAVE_MANAGER) == 0) {
-        injector_main();
-    } else {
-        dumper_main();
-    }
+    init_input();
+    init_console();
+    // TODO splash
+
+    mainloop();
+
     sceKernelExitProcess(0);
 }

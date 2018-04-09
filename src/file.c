@@ -4,12 +4,13 @@
 #include <psp2/io/stat.h>
 #include <psp2/io/fcntl.h>
 #include <psp2/io/dirent.h>
+#include <psp2/appmgr.h>
+#include <vitashell_user.h>
 
 #include "common.h"
 #include "file.h"
 
 void *memmem(const void *, size_t, const void *, size_t);
-
 
 #define SCE_ERROR_ERRNO_ENOENT (int)(0x80010002)
 #define SCE_ERROR_ERRNO_EEXIST (int)(0x80010011)
@@ -17,10 +18,11 @@ void *memmem(const void *, size_t, const void *, size_t);
 #define SCE_ERROR_ERRNO_EINVAL (int)(0x80010016)
 
 char *blacklists[] = {
-    "savedata0:/sce_sys/_safemem.dat",
-    "savedata0:/sce_sys/_keystone",
-    "savedata0:/sce_sys/_param.sfo",
-    "savedata0:/sce_sys/sealedkey",
+    "sce_pfs/",
+    "sce_sys/safemem.dat",
+    "sce_sys/keystone",
+    //"sce_sys/param.sfo",
+    "sce_sys/sealedkey",
     NULL,
 };
 
@@ -70,7 +72,7 @@ int mkdir(const char *path, int mode) {
     return 0;
 }
 
-int rmdir(const char *path) {
+int rmdir(const char *path, void (*callback)()) {
     SceUID dfd = sceIoDopen(path);
     if (dfd < 0) {
         int ret = sceIoRemove(path);
@@ -92,7 +94,7 @@ int rmdir(const char *path) {
             snprintf(new_path, 1024, "%s/%s", path, dir.d_name);
 
             if (SCE_S_ISDIR(dir.d_stat.st_mode)) {
-                int ret = rmdir(new_path);
+                int ret = rmdir(new_path, callback);
                 if (ret <= 0) {
                     free(new_path);
                     sceIoDclose(dfd);
@@ -100,6 +102,9 @@ int rmdir(const char *path) {
                 }
             } else {
                 int ret = sceIoRemove(new_path);
+                if (callback) {
+                    callback();
+                }
                 if (ret < 0) {
                     free(new_path);
                     sceIoDclose(dfd);
@@ -120,64 +125,6 @@ int rmdir(const char *path) {
     return 1;
 }
 
-int rm_savedir(const char *path) {
-    SceUID dfd = sceIoDopen(path);
-    if (dfd < 0) {
-        int ret = sceIoRemove(path);
-        if (ret < 0)
-            return ret;
-    }
-    int res = 0;
-
-    do {
-        SceIoDirent dir;
-        memset(&dir, 0, sizeof(SceIoDirent));
-
-        res = sceIoDread(dfd, &dir);
-        if (res > 0) {
-            if (strcmp(dir.d_name, ".") == 0 || strcmp(dir.d_name, "..") == 0)
-                continue;
-            // key dir
-            if (strcmp(dir.d_name, "sce_pfs") == 0 ||
-                    strcmp(dir.d_name, "sce_sys") == 0)
-                continue;
-
-            char *new_path = malloc(strlen(path) + strlen(dir.d_name) + 2);
-            snprintf(new_path, 1024, "%s/%s", path, dir.d_name);
-
-            if (SCE_S_ISDIR(dir.d_stat.st_mode)) {
-                int ret = rmdir(new_path);
-                if (ret <= 0) {
-                    free(new_path);
-                    sceIoDclose(dfd);
-                    return ret;
-                }
-            } else {
-                int ret = sceIoRemove(new_path);
-                if (ret < 0) {
-                    free(new_path);
-                    sceIoDclose(dfd);
-                    return ret;
-                }
-            }
-
-            free(new_path);
-        }
-    } while (res > 0);
-
-    sceIoDclose(dfd);
-
-    return 1;
-}
-
-int mvdir(const char *src, const char *dest) {
-    if (strcasecmp(src, dest) == 0) {
-        return -1;
-    }
-    // TODO need we any guards like vitashell?
-    return sceIoRename(src, dest);
-}
-
 int copyfile(char *src, char *dest) {
     // The source and destination paths are identical
     if (strcasecmp(src, dest) == 0) {
@@ -186,7 +133,8 @@ int copyfile(char *src, char *dest) {
 
     int i = 0;
     while (blacklists[i]) {
-        if (strcasecmp(dest, blacklists[i]) == 0) {
+        //if (strcasecmp(dest, blacklists[i]) == 0) {
+        if (strstr(dest, blacklists[i]))  {
             return 2;
         }
         i += 1;
@@ -216,9 +164,64 @@ int copyfile(char *src, char *dest) {
     return 1;
 }
 
-int copydir(const char *src, const char *dest) {
+int file_count(char *path, int check_blacklist) {
+    if (check_blacklist) {
+        int i = 0;
+        while (blacklists[i]) {
+            if (strstr(path, blacklists[i]))  {
+                return 0;
+            }
+            i += 1;
+        }
+    }
+
+
+    if (!exists(path)) {
+        return 0;
+    }
+
+    SceUID dfd = sceIoDopen(path);
+    int cnt = 0;
+    int res = 0;
+
+    do {
+        SceIoDirent dir;
+        memset(&dir, 0, sizeof(SceIoDirent));
+
+        res = sceIoDread(dfd, &dir);
+        if (res > 0) {
+            if (strcmp(dir.d_name, ".") == 0 || strcmp(dir.d_name, "..") == 0)
+                continue;
+
+            char *new_path = malloc(strlen(path) + strlen(dir.d_name) + 2);
+            snprintf(new_path, 1024, "%s/%s", path, dir.d_name);
+
+            if (SCE_S_ISDIR(dir.d_stat.st_mode)) {
+                cnt += file_count(new_path, check_blacklist);
+            } else {
+                cnt += 1;
+            }
+
+            free(new_path);
+        }
+    } while (res > 0);
+
+    sceIoDclose(dfd);
+    return cnt;
+}
+
+int copydir(const char *src, const char *dest, void (*callback)()) {
     if (strcasecmp(src, dest) == 0) {
         return -1;
+    }
+
+    int i = 0;
+    while (blacklists[i]) {
+        //if (strcasecmp(dest, blacklists[i]) == 0) {
+        if (strstr(dest, blacklists[i]))  {
+            return 2;
+        }
+        i += 1;
     }
 
     SceUID dfd = sceIoDopen(src);
@@ -251,9 +254,12 @@ int copydir(const char *src, const char *dest) {
             int ret = 0;
 
             if (SCE_S_ISDIR(dir.d_stat.st_mode)) {
-                ret = copydir(new_src, new_dest);
+                ret = copydir(new_src, new_dest, callback);
             } else {
                 ret = copyfile(new_src, new_dest);
+                if (callback) {
+                    callback();
+                }
             }
 
             free(new_dest);
@@ -270,30 +276,50 @@ int copydir(const char *src, const char *dest) {
     return 1;
 }
 
-int is_dumper_eboot(const char *path) {
-    SceUID fd = sceIoOpen(path, SCE_O_RDONLY, 0777);
-    if (fd < 0) {
-        return 0;
-    }
-    int size = sceIoLseek(fd, 0, SEEK_END);
-    sceIoLseek(fd, 0, SEEK_SET);
-    char *eboot = malloc(size);
-    sceIoRead(fd, eboot, size);
-    sceIoClose(fd);
+// below codes are part of vitashell
+char pfs_mount_point[MAX_MOUNT_POINT_LENGTH];
+int known_pfs_ids[] = {
+  0x6E,
+  0x12E,
+  0x12F,
+  0x3ED,
+};
 
-    int ret = memmem(eboot, size, "savemgr.elf", 11) != 0;
-    free(eboot);
-    return ret;
+int pfs_mount(const char *path) {
+    int res;
+    char klicensee[0x10];
+    //char license_buf[0x200];
+    ShellMountIdArgs args;
+
+    memset(klicensee, 0, sizeof(klicensee));
+
+    args.process_titleid = "SAVEMGR00";
+    args.path = path;
+    args.desired_mount_point = NULL;
+    args.klicensee = klicensee;
+    args.mount_point = pfs_mount_point;
+
+    int i;
+    for (i = 0; i < sizeof(known_pfs_ids) / sizeof(int); i++) {
+        args.id = known_pfs_ids[i];
+
+        res = shellUserMountById(&args);
+        if (res >= 0)
+            return res;
+    }
+
+    return sceAppMgrGameDataMount(path, 0, 0, pfs_mount_point);
 }
 
-int is_encrypted_eboot(const char *path) {
-    SceUID fd = sceIoOpen(path, SCE_O_RDONLY, 0777);
-    if (fd < 0) {
-        return 0;
-    }
-    char code[4] = {0};
-    sceIoRead(fd, code, 4);
-    sceIoClose(fd);
+int pfs_unmount() {
+    if (pfs_mount_point[0] == 0)
+        return -1;
 
-    return strncmp(code, "SCE", 4) != 0;
+    int res = sceAppMgrUmount(pfs_mount_point);
+    if (res >= 0) {
+        memset(pfs_mount_point, 0, sizeof(pfs_mount_point));
+        //memset(pfs_mounted_path, 0, sizeof(pfs_mounted_path));
+    }
+
+    return res;
 }

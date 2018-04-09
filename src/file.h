@@ -5,13 +5,15 @@ int exists(const char *path);
 int is_dir(const char *path);
 
 int mkdir(const char *path, int mode);
-int rmdir(const char *path);
-int rm_savedir(const char *path);
-int mvdir(const char *src, const char *dest);
-int copydir(const char *src, const char *dest);
+int rmdir(const char *path, void (*callback)());
+int file_count(char *path, int check_blacklist);
+int copydir(const char *src, const char *dest, void (*callback)());
 
 int copyfile(char *src, char *dest);
 
-int is_dumper_eboot(const char *path);
-int is_encrypted_eboot(const char *path);
+// below codes are part of vitashell
+#define MAX_MOUNT_POINT_LENGTH 16
+
+int pfs_mount(const char *path);
+int pfs_unmount();
 #endif

@@ -1,14 +1,15 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "sqlite3.h"
 #include "appdb.h"
 
-#define APP_DB "ur0:shell/db/app.db"
+#define APP_DB "ur0:/shell/db/app.db"
 
 static int get_applist_callback(void *data, int argc, char **argv, char **cols) {
     applist *list = (applist*)data;
-    appinfo *info = malloc(sizeof(appinfo));
-    memset(info, 0, sizeof(appinfo));
+    appinfo *info = calloc(1, sizeof(appinfo));
     if (list->count == 0) {
         list->items = info;
     } else {
@@ -25,6 +26,7 @@ static int get_applist_callback(void *data, int argc, char **argv, char **cols) 
     strcpy(info->title, argv[2]);
     strcpy(info->eboot, argv[3]);
     strcpy(info->dev, argv[4]);
+    strcpy(info->iconpath, argv[5]);
     for (int i = 0; i < 256; i++) {
         if (info->title[i] == '\n') {
             info->title[i] = ' ';
@@ -35,7 +37,8 @@ static int get_applist_callback(void *data, int argc, char **argv, char **cols) 
 
 int get_applist(applist *list) {
     char *query = "select a.titleid, b.realid, c.title, d.ebootbin,"
-                  "       rtrim(substr(d.ebootbin, 0, 5), ':') as dev"
+                  "       rtrim(substr(d.ebootbin, 0, 5), ':') as dev,"
+                  "       e.iconpath"
                   "  from (select titleid"
                   "          from tbl_appinfo"
                   "         where key = 566916785"
@@ -47,10 +50,14 @@ int get_applist(applist *list) {
                   "       tbl_appinfo_icon c,"
                   "       (select titleid, val as ebootbin"
                   "          from tbl_appinfo"
-                  "         where key = 3022202214) d"
+                  "         where key = 3022202214) d,"
+                  "       (select titleid, iconpath"
+                  "          from tbl_appinfo_icon"
+                  "         where type = 0) e"
                   " where a.titleid = b.titleid"
                   "   and a.titleid = c.titleid"
-                  "   and a.titleid = d.titleid";
+                  "   and a.titleid = d.titleid"
+                  "   and a.titleid = e.titleid";
 
     sqlite3 *db;
     int ret = sqlite3_open(APP_DB, &db);
@@ -69,4 +76,30 @@ int get_applist(applist *list) {
         return -3;
     }
     return 0;
+}
+
+void load_icon(appinfo *info) {
+    if (info->icon.texture) {
+        return;
+    }
+
+    if (!info->icon.buf) {
+        info->icon.buf = calloc(sizeof(uint8_t), ICON_BUF_SIZE);
+        FILE *f = fopen(info->iconpath, "r");
+        fread(info->icon.buf, sizeof(uint8_t), ICON_BUF_SIZE, f);
+        fclose(f);
+    }
+
+    info->icon.texture = vita2d_load_PNG_buffer(info->icon.buf);
+}
+
+void unload_icon(appinfo *info) {
+    if (info->icon.buf) {
+        free(info->icon.buf);
+        info->icon.buf = NULL;
+    }
+    if (info->icon.texture) {
+        vita2d_free_texture(info->icon.texture);
+        info->icon.texture = NULL;
+    }
 }

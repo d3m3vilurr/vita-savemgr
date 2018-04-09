@@ -9,6 +9,7 @@
 #include "config.h"
 #include "file.h"
 #include "ini.h"
+#include "util.h"
 
 char app_titleid[16];
 char app_title[256];
@@ -39,9 +40,4 @@ void load_config() {
     if (!config.slot_format) {
         config.slot_format = strdup(DEFAULT_SAVE_SLOT_FORMAT);
     }
-    int length = strlen(config.base) + strlen(config.slot_format) + 6;
-    char format[length];
-    memset(format, 0, length);
-    snprintf(format, length, "ux0:%s/%s", config.base, config.slot_format);
-    config.full_path_format = strdup(format);
 }

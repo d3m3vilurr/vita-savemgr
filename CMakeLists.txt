@@ -28,6 +28,8 @@ add_definitions(-DSQLITE_OS_OTHER=1)
 add_definitions(-DSQLITE_TEMP_STORE=3)
 add_definitions(-DSQLITE_THREADSAFE=0)
 add_definitions(-DVERSION=\"${VERSION}\")
+#add_definitions(-DUSE_DEBUG=1)
+#add_definitions(-DDEBUG_IP=\"127.0.0.1\")
 
 set(CMAKE_C_FLAGS "-Wl,-q -Wall -O3 -std=c99")
 
@@ -37,12 +39,13 @@ include_directories(
 )
 
 add_executable(${PROJECT_NAME}.elf
-    src/console.c
     src/appdb.c
     src/file.c
     src/font.c
-    src/button.c
+    src/display.c
+    src/input.c
     src/config.c
+    src/util.c
     src/main.c
     src/vita_sqlite.c
 
@@ -52,7 +55,8 @@ add_executable(${PROJECT_NAME}.elf
 
 target_link_libraries(${PROJECT_NAME}.elf
     -lvita2d
-    -lfreetype
+    #-lfreetype
+    -lpng
     -lz
     -lm
     -lSceIofilemgr_stub
@@ -64,8 +68,15 @@ target_link_libraries(${PROJECT_NAME}.elf
     -lSceAppUtil_stub
     -lSceSysmodule_stub
     -lSceCtrl_stub
+    -lSceTouch_stub
     -lScePgf_stub
     -lSceShellSvc_stub
+    -ltaihen_stub
+    -lVitaShellUser_stub_weak
+
+    -ldebugnet
+    -lSceNetCtl_stub
+    -lSceNet_stub
 )
 
 add_custom_target(${PROJECT_NAME}.vpk ALL
