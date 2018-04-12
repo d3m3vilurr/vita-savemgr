@@ -767,7 +767,10 @@ void mainloop() {
         return;
     }
 
-    int steps = (list.count / ITEM_COL) - ITEM_ROW;
+    int rows = (list.count / ITEM_COL) + ((list.count % ITEM_COL) ? 1 : 0);
+    int steps = rows - ITEM_ROW;
+    printf("total: %d row: %d steps: %d\n", list.count, rows, steps);
+
     if (steps < 0) {
         steps = 0;
     }
