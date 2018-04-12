@@ -1,9 +1,37 @@
+#include <string.h>
 #include <psp2/ctrl.h>
 #include <psp2/touch.h>
 #include <psp2/shellutil.h>
+#include <psp2/apputil.h>
+#include <psp2/system_param.h>
 
 #include "common.h"
 #include "input.h"
+
+void init_input() {
+    sceCtrlSetSamplingMode(SCE_CTRL_MODE_ANALOG_WIDE);
+    sceTouchSetSamplingState(SCE_TOUCH_PORT_FRONT, SCE_TOUCH_SAMPLING_STATE_START);
+
+    int enter_button;
+
+    SceAppUtilInitParam init_param = {0};
+    SceAppUtilBootParam boot_param = {0};
+    sceAppUtilInit(&init_param, &boot_param);
+
+    sceAppUtilSystemParamGetInt(SCE_SYSTEM_PARAM_ID_ENTER_BUTTON, &enter_button);
+
+    if (enter_button == SCE_SYSTEM_PARAM_ENTER_BUTTON_CIRCLE) {
+        SCE_CTRL_ENTER = SCE_CTRL_CIRCLE;
+        SCE_CTRL_CANCEL = SCE_CTRL_CROSS;
+        strcpy(ICON_ENTER, ICON_CIRCLE);
+        strcpy(ICON_CANCEL, ICON_CROSS);
+    } else {
+        SCE_CTRL_ENTER = SCE_CTRL_CROSS;
+        SCE_CTRL_CANCEL = SCE_CTRL_CIRCLE;
+        strcpy(ICON_ENTER, ICON_CROSS);
+        strcpy(ICON_CANCEL, ICON_CIRCLE);
+    }
+}
 
 void lock_psbutton() {
     sceShellUtilLock(SCE_SHELL_UTIL_LOCK_TYPE_PS_BTN |

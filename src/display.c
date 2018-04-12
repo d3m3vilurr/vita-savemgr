@@ -1,7 +1,5 @@
 #include <string.h>
 #include <stdlib.h>
-#include <psp2/apputil.h>
-#include <psp2/system_param.h>
 #include <psp2/ctrl.h>
 
 #include "common.h"
@@ -10,26 +8,6 @@
 #include "util.h"
 
 void init_console() {
-    int enter_button;
-
-    SceAppUtilInitParam init_param = {0};
-    SceAppUtilBootParam boot_param = {0};
-    sceAppUtilInit(&init_param, &boot_param);
-
-    sceAppUtilSystemParamGetInt(SCE_SYSTEM_PARAM_ID_ENTER_BUTTON, &enter_button);
-
-    if (enter_button == SCE_SYSTEM_PARAM_ENTER_BUTTON_CIRCLE) {
-        SCE_CTRL_ENTER = SCE_CTRL_CIRCLE;
-        SCE_CTRL_CANCEL = SCE_CTRL_CROSS;
-        strcpy(ICON_ENTER, ICON_CIRCLE);
-        strcpy(ICON_CANCEL, ICON_CROSS);
-    } else {
-        SCE_CTRL_ENTER = SCE_CTRL_CROSS;
-        SCE_CTRL_CANCEL = SCE_CTRL_CIRCLE;
-        strcpy(ICON_ENTER, ICON_CROSS);
-        strcpy(ICON_CANCEL, ICON_CIRCLE);
-    }
-
     confirm_msg = calloc(sizeof(char), 1);
     aprintf(&confirm_msg, "%s CANCEL    %s CONFIRM", ICON_CANCEL, ICON_ENTER);
     confirm_msg_width = vita2d_pgf_text_width(font, 1.0, confirm_msg);

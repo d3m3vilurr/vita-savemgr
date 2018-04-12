@@ -355,11 +355,6 @@ char* error_message(ProcessError error) {
     }
 }
 
-void init_input() {
-    sceCtrlSetSamplingMode(SCE_CTRL_MODE_ANALOG_WIDE);
-    sceTouchSetSamplingState(SCE_TOUCH_PORT_FRONT, SCE_TOUCH_SAMPLING_STATE_START);
-}
-
 #define IN_RANGE(start, end, value) (start < value && value < end)
 #define IS_TOUCHED(rect, pt) \
     (IN_RANGE(rect.left, rect.right, pt.x) && IN_RANGE(rect.top, rect.bottom, pt.y))
