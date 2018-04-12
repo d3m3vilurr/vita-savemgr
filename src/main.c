@@ -844,12 +844,14 @@ void mainloop() {
     }
 }
 
+#define MODULE_PATH "ux0:app/SAVEMGR00/sce_sys"
+
 int main() {
     debugNetInit(DEBUG_IP, 18194, DEBUG);
 
-    kernel_modid = taiLoadStartKernelModule("ux0:VitaShell/module/kernel.skprx",
+    kernel_modid = taiLoadStartKernelModule(MODULE_PATH "/kernel.skprx",
                                             0, NULL, 0);
-    user_modid = sceKernelLoadStartModule("ux0:VitaShell/module/user.suprx",
+    user_modid = sceKernelLoadStartModule(MODULE_PATH "/user.suprx",
                                           0, NULL, 0, NULL, NULL);
 
     vita2d_init();

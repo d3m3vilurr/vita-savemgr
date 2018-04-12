@@ -7,11 +7,13 @@ cd $VITASDK/tmp/VitaShell*/modules/kernel
 cmake .
 make
 make install
+cp kernel.skprx $TRAVIS_BUILD_DIR/sce_sys/kernel.skprx
 
 cd $VITASDK/tmp/VitaShell*/modules/user
 cmake .
 make
 make install
+cp user.suprx $TRAVIS_BUILD_DIR/sce_sys/user.suprx
 
 cd $VITASDK
 rm -rf $VITASDK/tmp
