@@ -4,6 +4,7 @@
 
 #include "sqlite3.h"
 #include "appdb.h"
+#include "file.h"
 
 #define APP_DB "ur0:/shell/db/app.db"
 
@@ -80,6 +81,10 @@ int get_applist(applist *list) {
 
 void load_icon(appinfo *info) {
     if (info->icon.texture) {
+        return;
+    }
+
+    if (!exists(info->iconpath)) {
         return;
     }
 

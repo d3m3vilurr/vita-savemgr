@@ -184,6 +184,10 @@ void draw_button(int left, int top, int width, int height, const char *text, flo
 }
 
 void draw_appinfo_icon(icon_data *icon) {
+    if (!icon->texture) {
+        return;
+    }
+
     float w = vita2d_texture_get_width(icon->texture);
     float h = vita2d_texture_get_height(icon->texture);
     float z0 = APPINFO_ICON_WIDTH / w;
