@@ -12,7 +12,12 @@
 void init_console() {
     int enter_button;
 
+    SceAppUtilInitParam init_param = {0};
+    SceAppUtilBootParam boot_param = {0};
+    sceAppUtilInit(&init_param, &boot_param);
+
     sceAppUtilSystemParamGetInt(SCE_SYSTEM_PARAM_ID_ENTER_BUTTON, &enter_button);
+
     if (enter_button == SCE_SYSTEM_PARAM_ENTER_BUTTON_CIRCLE) {
         SCE_CTRL_ENTER = SCE_CTRL_CIRCLE;
         SCE_CTRL_CANCEL = SCE_CTRL_CROSS;
