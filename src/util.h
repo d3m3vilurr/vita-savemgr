@@ -13,4 +13,6 @@ char *aprintf(char **s, const char *fmt, ...);
 #define INFO 1
 #endif
 
+#define printf(...) debugNetPrintf(DEBUG, __VA_ARGS__)
+
 #endif
