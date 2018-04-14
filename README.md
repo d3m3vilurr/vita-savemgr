@@ -18,6 +18,16 @@ base=/data/savegames
 slot_format=%s/SLOT%d
 ```
 
+## Development
+Need VitaShell's [modules][];
+install `kernel` and `user` and copy `kernel.skprx` and `user.suprx` into `sce_sys`
+then you can build vpk.
+
+```bash
+mkdir build
+cd build && cmake -GNinja .. && ninja`
+```
+
 ## License
 GPLv3
 
@@ -27,5 +37,6 @@ Project use these project's codes.
 * [VitaShell][]
 * [rinCheat][]
 
+[modules]: https://github.com/TheOfficialFloW/VitaShell/tree/master/modules
 [VitaShell]: https://github.com/TheOfficialFloW/VitaShell
 [rinCheat]: https://github.com/Rinnegatamante/rinCheat
