@@ -6,7 +6,7 @@ set(CMAKE_C_COMPILER "arm-vita-eabi-gcc")
 project(savemgr)
 set(TITLE_ID "SAVEMGR00")
 set(TITLE "Save Manager")
-set(VERSION "1.0.0")
+set(VERSION "2.0.0")
 
 execute_process(COMMAND
     python -c "print '%02d.%02d' % tuple(map(lambda x: int(x), '${VERSION}'.split('.')[:2]))"

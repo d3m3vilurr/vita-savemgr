@@ -1,4 +1,13 @@
 ## Unreleased
+
+## 2.0.0
+- Re-enable package compression (cdf1833c)
+- Fix confirm button always ASIA mode (#59)
+- Fix not shown all games (#62)
+- Fix crash if not have icon files (#68)
+- Embed VitaShell modules into vpk file (#66)
+
+## 2.0.0-b1
 - Move 2.0.0 tree
 - Support GUI
 - No more needs app switching
