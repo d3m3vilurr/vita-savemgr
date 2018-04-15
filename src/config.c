@@ -26,6 +26,8 @@ static int handler(void* out,
         p->slot_format = strdup(value);
     } else if (strcmp(name, "list_mode") == 0) {
         p->list_mode = strdup(value);
+    } else if (strcmp(name, "use_dpad") == 0) {
+        p->use_dpad = strncmp(value, "true", 4) == 0;
     }
     return 1;
 }

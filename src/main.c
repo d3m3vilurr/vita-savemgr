@@ -121,7 +121,17 @@ char *slot_sfo_path(const appinfo *info, int slot) {
     return path;
 }
 
+int select_row = 0;
+int select_col = 0;
+
 void draw_icon(icon_data *icon, int row, int col) {
+    if (config.use_dpad && row == select_row && col == select_col) {
+        vita2d_draw_rectangle(ICON_LEFT(col) - ITEM_BOX_MARGIN,
+                              ICON_TOP(row) - ITEM_BOX_MARGIN,
+                              ICON_WIDTH + ITEM_BOX_MARGIN * 2,
+                              ICON_HEIGHT + ITEM_BOX_MARGIN * 2,
+                              WHITE);
+    }
     icon->touch_area.left = ICON_LEFT(col);
     icon->touch_area.top = ICON_TOP(row);
     icon->touch_area.right = icon->touch_area.left + ICON_WIDTH;
@@ -167,6 +177,19 @@ void draw_icons(appinfo *curr) {
 }
 
 void draw_list_row(appinfo *curr, int row) {
+    if (config.use_dpad && row == select_row) {
+        vita2d_draw_rectangle(LIST_LEFT - ITEM_BOX_MARGIN,
+                              LIST_TOP(row) - ITEM_BOX_MARGIN,
+                              LIST_WIDTH + ITEM_BOX_MARGIN * 2,
+                              LIST_HEIGHT + ITEM_BOX_MARGIN * 2,
+                              WHITE);
+        vita2d_draw_rectangle(LIST_LEFT,
+                              LIST_TOP(row),
+                              LIST_WIDTH,
+                              LIST_HEIGHT,
+                              BLACK);
+    }
+
     load_icon(curr);
     icon_data *icon = &curr->icon;
 
@@ -422,8 +445,8 @@ char* error_message(ProcessError error) {
 #define IS_TOUCHED(rect, pt) \
     (IN_RANGE(rect.left, rect.right, pt.x) && IN_RANGE(rect.top, rect.bottom, pt.y))
 
-ScreenState on_mainscreen_event(int steps, int *step, appinfo **curr,
-                                appinfo **touched) {
+ScreenState on_mainscreen_event_with_touch(int steps, int *step, appinfo **curr,
+                                           appinfo **touched) {
     int moves = 0;
     switch (mainscreen_list_mode) {
         case USE_LIST:
@@ -475,6 +498,115 @@ ScreenState on_mainscreen_event(int steps, int *step, appinfo **curr,
     }
 
     return UNKNOWN;
+}
+
+int selectable_count(appinfo *curr, int row, int col) {
+    int selectable_count = 0;
+    while (curr && selectable_count < (row * col)) {
+        selectable_count += 1;
+        curr = curr->next;
+    }
+    return selectable_count;
+}
+
+#define IS_OVERFLOW() ( \
+        select_row * max_col + select_col >= \
+        selectable_count(*curr, max_row, max_col) \
+    )
+ScreenState on_mainscreen_event_with_dpad(int steps, int *step, appinfo **curr,
+                                          appinfo **touched) {
+    int moves;
+    int max_row;
+    int max_col;
+    switch (mainscreen_list_mode) {
+        case USE_LIST:
+            moves = 1;
+            max_row = LIST_ROW;
+            max_col = 1;
+            break;
+        case USE_ICON:
+        default:
+            moves = ICONS_COL;
+            max_row = ICONS_ROW;
+            max_col = ICONS_COL;
+            break;
+    }
+
+    int btn = read_buttons();
+
+    //if (btn & SCE_CTRL_HOLD) {
+    //    return UNKNOWN;
+    //}
+
+    if (btn & SCE_CTRL_UP) {
+        if (select_row == 0) {
+            if (*step == 0) {
+                return UNKNOWN;
+            }
+            *step -= 1;
+            for (int i = 0; i < moves; i++, *curr = (*curr)->prev) {
+                unload_icon(*curr);
+            }
+        } else {
+            select_row -= 1;
+        }
+        return MAIN_SCREEN;
+    }
+    if (btn & SCE_CTRL_DOWN) {
+        if (select_row + 1 == max_row) {
+            if (*step == steps) {
+                return UNKNOWN;
+            }
+            *step += 1;
+            for (int i = 0; i < moves; i++, *curr = (*curr)->next) {
+                unload_icon(*curr);
+            }
+        } else {
+            select_row += 1;
+        }
+        if (IS_OVERFLOW()) {
+            select_row -= 1;
+        }
+        return MAIN_SCREEN;
+    }
+    if (btn & SCE_CTRL_LEFT) {
+        select_col -= 1;
+        if (select_col < 0) {
+            select_col = 0;
+        }
+        return MAIN_SCREEN;
+    }
+    if (btn & SCE_CTRL_RIGHT) {
+        select_col += 1;
+        if (select_col >= max_col) {
+            select_col = max_col - 1;
+        }
+        if (IS_OVERFLOW()) {
+            select_col -= 1;
+        }
+        return MAIN_SCREEN;
+    }
+
+    if (!(btn & SCE_CTRL_HOLD) && btn & SCE_CTRL_ENTER) {
+        appinfo *tmp = *curr;
+        int i = 0;
+        for (int i = 0;
+                tmp && i < (select_row * max_col) + select_col;
+                i++, tmp = tmp->next);
+        *touched = tmp;
+        return PRINT_APPINFO;
+    }
+
+    return UNKNOWN;
+}
+#undef IS_OVERFLOW
+
+ScreenState on_mainscreen_event(int steps, int *step, appinfo **curr,
+                                appinfo **touched) {
+    if (config.use_dpad) {
+        return on_mainscreen_event_with_dpad(steps, step, curr, touched);
+    }
+    return on_mainscreen_event_with_touch(steps, step, curr, touched);
 }
 
 #define APPINFO_BUTTON_AREA(n) \

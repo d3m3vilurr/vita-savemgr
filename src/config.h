@@ -8,6 +8,7 @@ typedef struct configure {
     const char *base;
     const char *slot_format;
     const char *list_mode;
+    uint8_t use_dpad;
 } configure;
 
 extern configure config;
