@@ -1131,9 +1131,12 @@ int main() {
     // if before start VitaShell or this application,
     // will remain garbage in the kernel, taiLoadStartKernelModule will return
     // always 0x8002D013
-    if (kernel_modid != 0x8002D013 && kernel_modid < 0) {
-        printf("cannot find user module %x\n", user_modid);
-        goto error_module_load;
+    // also travis cppcheck is too old version, cannot check properly
+    if (kernel_modid < 0) {
+        if (kernel_modid != 0x8002D013)  {
+            printf("cannot find kernel module %x\n", kernel_modid);
+            goto error_module_load;
+        }
     }
     user_modid = sceKernelLoadStartModule(MODULE_PATH "/user.suprx",
                                           0, NULL, 0, NULL, NULL);
