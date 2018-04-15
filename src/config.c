@@ -48,3 +48,12 @@ void load_config() {
         config.list_mode = strdup(DEFAULT_LIST_MODE);
     }
 }
+
+void save_config() {
+    FILE *f = fopen(CONFIG_FILE, "w");
+    fprintf(f, "%s = %s\n", "base", config.base);
+    fprintf(f, "%s = %s\n", "slot_format", config.slot_format);
+    fprintf(f, "%s = %s\n", "list_mode", config.list_mode);
+    fprintf(f, "%s = %s\n", "use_dpad", config.use_dpad ? "true": "false");
+    fclose(f);
+}

@@ -26,7 +26,6 @@
 #include "util.h"
 
 vita2d_pgf* font;
-SceUID patch_modid = -1;
 SceUID kernel_modid = -1;
 SceUID user_modid = -1;
 
@@ -43,6 +42,8 @@ int close_msg_width;
 typedef enum {
     UNKNOWN = 0,
     MAIN_SCREEN = 1,
+    CONFIG_SCREEN,
+    RELOAD_MAINSCREEN,
     PRINT_APPINFO,
     BACKUP_MODE,
     BACKUP_CONFIRM,
@@ -82,6 +83,7 @@ int select_row = 0;
 int select_col = 0;
 int select_appinfo_button = 0;
 int select_slot = 0;
+int select_config = 2;
 
 char *save_dir_path(const appinfo *info) {
     //if (strncmp(info->dev, "gro0", 4) == 0) {
@@ -266,6 +268,27 @@ void draw_button(int left, int top, int width, int height, const char *text, flo
                          left + text_left_margin,
                          top + text_top_margin + text_height,
                          text_color, zoom, text);
+}
+
+struct config_item {
+    const char *name;
+    const char *value;
+};
+
+void draw_config() {
+    struct config_item items[] = {
+        {"Base",            config.base},
+        {"Slot Format",     config.slot_format},
+        {"View Mode",       config.list_mode},
+        {"Use button only", config.use_dpad ? "true" : "false"},
+    };
+    // FIXME: ugly UI
+    vita2d_draw_rectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, BLACK);
+    for (int i = 0; i < sizeof(items) / sizeof(struct config_item); i++) {
+        int color = i == select_config ? GREEN : WHITE;
+        vita2d_pgf_draw_text(font, 10, i * 30 + 30, color, 1.0, items[i].name);
+        vita2d_pgf_draw_text(font, 200, i * 30 + 30, color, 1.0, items[i].value);
+    }
 }
 
 void draw_appinfo_icon(icon_data *icon) {
@@ -463,14 +486,18 @@ char* error_message(ProcessError error) {
 
 ScreenState on_mainscreen_event_with_touch(int steps, int *step, appinfo **curr,
                                            appinfo **touched) {
-    int moves = 0;
+    // FIXME: cleanup
+    int move_row = 0;
+    int move_col = 0;
     switch (mainscreen_list_mode) {
         case USE_LIST:
-            moves = 1;
+            move_row = LIST_ROW;
+            move_col = 1;
             break;
         case USE_ICON:
         default:
-            moves = ICONS_COL;
+            move_row = 1;
+            move_col = ICONS_COL;
             break;
     }
     int btn = read_buttons();
@@ -479,22 +506,27 @@ ScreenState on_mainscreen_event_with_touch(int steps, int *step, appinfo **curr,
         return UNKNOWN;
     }
 
+    if (btn & SCE_CTRL_RTRIGGER) {
+        select_config = 2;
+        return CONFIG_SCREEN;
+    }
+
     if (btn & SCE_CTRL_UP) {
-        if (*step == 0) {
+        if (*step <= 0) {
             return UNKNOWN;
         }
-        *step -= 1;
-        for (int i = 0; i < moves; i++, *curr = (*curr)->prev) {
+        *step -= move_row;
+        for (int i = 0; i < move_row * move_col; i++, *curr = (*curr)->prev) {
             unload_icon(*curr);
         }
         return MAIN_SCREEN;
     }
     if (btn & SCE_CTRL_DOWN) {
-        if (*step == steps) {
+        if (*step >= steps) {
             return UNKNOWN;
         }
-        *step += 1;
-        for (int i = 0; i < moves; i++, *curr = (*curr)->next) {
+        *step += move_row;
+        for (int i = 0; i < move_row * move_col; i++, *curr = (*curr)->next) {
             unload_icon(*curr);
         }
         return MAIN_SCREEN;
@@ -599,6 +631,10 @@ ScreenState on_mainscreen_event_with_dpad(int steps, int *step, appinfo **curr,
         return MAIN_SCREEN;
     }
 
+    if (!(btn & SCE_CTRL_HOLD) && btn & SCE_CTRL_RTRIGGER) {
+        return CONFIG_SCREEN;
+    }
+
     if (!(btn & SCE_CTRL_HOLD) && btn & SCE_CTRL_ENTER) {
         appinfo *tmp = *curr;
         for (int i = 0; tmp && i < (select_row * max_col) + select_col;
@@ -618,6 +654,69 @@ ScreenState on_mainscreen_event(int steps, int *step, appinfo **curr,
         return on_mainscreen_event_with_dpad(steps, step, curr, touched);
     }
     return on_mainscreen_event_with_touch(steps, step, curr, touched);
+}
+
+ScreenState on_config_event() {
+    static int need_refresh = 0;
+    static int need_save = 0;
+    int btn = read_buttons();
+
+    if (btn & SCE_CTRL_HOLD) {
+        return UNKNOWN;
+    }
+
+    if (btn & SCE_CTRL_CANCEL) {
+        if (need_save) {
+            save_config();
+        }
+        if (need_refresh) {
+            need_refresh = 0;
+            return RELOAD_MAINSCREEN;
+        }
+        return MAIN_SCREEN;
+    }
+
+    if (btn & SCE_CTRL_UP) {
+        select_config -= 1;
+        if (select_config < 2) {
+            select_config = 2;
+        }
+        return UNKNOWN;
+    }
+
+    if (btn & SCE_CTRL_DOWN) {
+        select_config += 1;
+        if (select_config >= 4) {
+            select_config = 3;
+        }
+        return UNKNOWN;
+    }
+
+    if (btn & SCE_CTRL_ENTER) {
+        switch (select_config) {
+            case 0:
+            case 1:
+                // TODO text dialog
+                break;
+            case 2:
+                if (strncmp(config.list_mode, "icon", 4) == 0) {
+                    strncpy(config.list_mode, "list", 4);
+                    mainscreen_list_mode = USE_LIST;
+                } else {
+                    strncpy(config.list_mode, "icon", 4);
+                    mainscreen_list_mode = USE_ICON;
+                }
+                need_refresh = 1;
+                need_save = 1;
+                break;
+            case 3:
+                config.use_dpad = !config.use_dpad;
+                need_refresh = 1;
+                need_save = 1;
+                break;
+        }
+    }
+    return UNKNOWN;
 }
 
 #define APPINFO_BUTTON_AREA(n) \
@@ -955,6 +1054,10 @@ void draw_screen(ScreenState state, appinfo *curr, appinfo *choose, int slot) {
             }
         }
 
+        if (state == CONFIG_SCREEN) {
+            draw_config();
+        }
+
         if (state >= PRINT_APPINFO) {
             draw_appinfo(state, choose);
         }
@@ -1063,12 +1166,13 @@ ScreenState slot_state_machine(appinfo *curr, appinfo *choose,
         }
     }
 }
-void mainloop() {
+
+int mainloop() {
     applist list = {0};
     int ret = get_applist(&list);
     if (ret < 0) {
         // loading error
-        return;
+        return -1;
     }
 
     int rows;
@@ -1094,6 +1198,8 @@ void mainloop() {
     curr = head = tail = list.items;
 
     int step = 0;
+    select_row = 0;
+    select_col = 0;
 
     while (tail->next) {
         tail = tail->next;
@@ -1108,6 +1214,9 @@ void mainloop() {
             switch (state) {
                 case MAIN_SCREEN:
                     new_state = on_mainscreen_event(steps, &step, &curr, &choose);
+                    break;
+                case CONFIG_SCREEN:
+                    new_state = on_config_event();
                     break;
                 case PRINT_APPINFO:
                     new_state = on_appinfo_event();
@@ -1142,6 +1251,8 @@ void mainloop() {
                                                      "Format game savedata",
                                                      format_savedata);
                     break;
+                case RELOAD_MAINSCREEN:
+                    return 1;
                 default:
                     break;
             }
@@ -1205,7 +1316,7 @@ int main() {
     init_console();
     // TODO splash
 
-    mainloop();
+    while (mainloop() >= 0);
 
     sceKernelExitProcess(0);
     return 0;

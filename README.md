@@ -2,18 +2,20 @@ Dump & restore decrypted savefile.
 [![Build Status](https://travis-ci.org/d3m3vilurr/vita-savemgr.svg?branch=master)](https://travis-ci.org/d3m3vilurr/vita-savemgr)
 
 ## Configure
-If you want to use another dump directory format, make simple `config.ini` file into `ux0:data/savemgr`
+R trigger in mainscreen will open simple configure screen.
+Or you can change `ux0:data/savemgr/config.ini` manually.
 
-- use `ux0:data/savegames/PCSH00000_SLOT0`
+If you want to use another dump directory format, current time you need modify
+ini file.
+
+for example, if you want to use `ux0:data/savegames/PCSH00000_SLOT0`,
 
 ```ini
 base=/data/savegames
 slot_format=%s_SLOT%d
-list_mode=list
-use_dpad=true
 ```
 
-Default config like this; it will save to `ux0:data/savegames/PCSH00000/SLOT0`
+Default ini config is below;
 
 ```ini
 base=/data/savegames
@@ -24,7 +26,7 @@ use_dpad=true
 
 ## Development
 Need VitaShell's [modules][];
-install `kernel` and `user` and copy `kernel.skprx` and `user.suprx` into `sce_sys`
+install `kernel` and `user` and copy `kernel.skprx` and `user.suprx` into `sce_sys`.
 then you can build vpk.
 
 ```bash
