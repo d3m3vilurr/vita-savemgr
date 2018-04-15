@@ -589,9 +589,7 @@ ScreenState on_mainscreen_event_with_dpad(int steps, int *step, appinfo **curr,
 
     if (!(btn & SCE_CTRL_HOLD) && btn & SCE_CTRL_ENTER) {
         appinfo *tmp = *curr;
-        int i = 0;
-        for (int i = 0;
-                tmp && i < (select_row * max_col) + select_col;
+        for (int i = 0; tmp && i < (select_row * max_col) + select_col;
                 i++, tmp = tmp->next);
         *touched = tmp;
         return PRINT_APPINFO;
@@ -981,7 +979,6 @@ void mainloop() {
 
     int rows;
     int steps;
-    int moves = 0;
     switch (mainscreen_list_mode) {
         case USE_LIST:
             rows = list.count;
