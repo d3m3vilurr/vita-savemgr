@@ -849,15 +849,26 @@ void mainloop() {
 int main() {
     debugNetInit(DEBUG_IP, 18194, DEBUG);
 
-    kernel_modid = taiLoadStartKernelModule(MODULE_PATH "/kernel.skprx",
-                                            0, NULL, 0);
-    user_modid = sceKernelLoadStartModule(MODULE_PATH "/user.suprx",
-                                          0, NULL, 0, NULL, NULL);
-
     vita2d_init();
     vita2d_set_clear_color(BLACK);
 
     font = load_system_fonts();
+
+    kernel_modid = taiLoadStartKernelModule(MODULE_PATH "/kernel.skprx",
+                                            0, NULL, 0);
+    // if before start VitaShell or this application,
+    // will remain garbage in the kernel, taiLoadStartKernelModule will return
+    // always 0x8002D013
+    if (kernel_modid != 0x8002D013 && kernel_modid < 0) {
+        printf("cannot find user module %x\n", user_modid);
+        goto error_module_load;
+    }
+    user_modid = sceKernelLoadStartModule(MODULE_PATH "/user.suprx",
+                                          0, NULL, 0, NULL, NULL);
+    if (user_modid < 0) {
+        printf("cannot find user module %x\n", user_modid);
+        goto error_module_load;
+    }
 
     load_config();
 
@@ -877,4 +888,20 @@ int main() {
     mainloop();
 
     sceKernelExitProcess(0);
+    return 0;
+
+error_module_load:
+    for (int i = 0; i < 3; i++) {
+        vita2d_start_drawing();
+        vita2d_clear_screen();
+        vita2d_pgf_draw_text(font, 0, 40,
+                             RED, 2.0, "not found module files");
+
+        vita2d_end_drawing();
+        vita2d_wait_rendering_done();
+        vita2d_swap_buffers();
+    }
+    sceKernelDelayThread(10 * 1000 * 1000);
+    sceKernelExitProcess(1);
+    return 1;
 }

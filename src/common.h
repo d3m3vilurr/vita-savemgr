@@ -98,6 +98,7 @@
 #define LIGHT_GRAY          RGBA8(0xD3, 0xD3, 0xD3, 0xD3)
 #define WHITE               RGBA8(0xFF, 0xFF, 0xFF, 0xFF)
 #define LIGHT_SKY_BLUE      RGBA8(0x87, 0xCE, 0xEB, 0xFF)
+#define RED                 RGBA8(0xFF, 0x00, 0x00, 0xFF)
 
 #define TEMP_FILE   "ux0:data/savemgr/tmp"
 #define CONFIG_FILE "ux0:data/savemgr/config.ini"
