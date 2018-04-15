@@ -71,6 +71,18 @@ typedef enum {
     ERROR_COPY_DIR,
 } ProcessError;
 
+typedef enum {
+    USE_ICON = 1,
+    USE_LIST,
+} DrawListMode;
+
+DrawListMode mainscreen_list_mode;
+
+int select_row = 0;
+int select_col = 0;
+int select_appinfo_button = 0;
+int select_slot = 0;
+
 char *save_dir_path(const appinfo *info) {
     //if (strncmp(info->dev, "gro0", 4) == 0) {
     char *path = calloc(sizeof(char), 1);
@@ -115,6 +127,13 @@ char *slot_sfo_path(const appinfo *info, int slot) {
 }
 
 void draw_icon(icon_data *icon, int row, int col) {
+    if (config.use_dpad && row == select_row && col == select_col) {
+        vita2d_draw_rectangle(ICON_LEFT(col) - ITEM_BOX_MARGIN,
+                              ICON_TOP(row) - ITEM_BOX_MARGIN,
+                              ICON_WIDTH + ITEM_BOX_MARGIN * 2,
+                              ICON_HEIGHT + ITEM_BOX_MARGIN * 2,
+                              WHITE);
+    }
     icon->touch_area.left = ICON_LEFT(col);
     icon->touch_area.top = ICON_TOP(row);
     icon->touch_area.right = icon->touch_area.left + ICON_WIDTH;
@@ -153,9 +172,75 @@ void draw_icons(appinfo *curr) {
     //appinfo *tmp = curr;
     //i = 0;
 
-    for (int i = 0; curr && i < (ITEM_COL * ITEM_ROW); i++, curr = curr->next) {
+    for (int i = 0; curr && i < (ICONS_COL * ICONS_ROW); i++, curr = curr->next) {
         load_icon(curr);
-        draw_icon(&curr->icon, i / ITEM_COL, i % ITEM_COL);
+        draw_icon(&curr->icon, i / ICONS_COL, i % ICONS_COL);
+    }
+}
+
+void draw_list_row(appinfo *curr, int row) {
+    if (config.use_dpad && row == select_row) {
+        vita2d_draw_rectangle(LIST_LEFT - ITEM_BOX_MARGIN,
+                              LIST_TOP(row) - ITEM_BOX_MARGIN,
+                              LIST_WIDTH + ITEM_BOX_MARGIN * 2,
+                              LIST_HEIGHT + ITEM_BOX_MARGIN * 2,
+                              WHITE);
+        vita2d_draw_rectangle(LIST_LEFT,
+                              LIST_TOP(row),
+                              LIST_WIDTH,
+                              LIST_HEIGHT,
+                              BLACK);
+    }
+
+    load_icon(curr);
+    icon_data *icon = &curr->icon;
+
+    icon->touch_area.left = LIST_LEFT;
+    icon->touch_area.top = LIST_TOP(row);
+    icon->touch_area.right = icon->touch_area.left + LIST_WIDTH;
+    icon->touch_area.bottom = icon->touch_area.top + LIST_HEIGHT;
+
+    if (icon->texture) {
+        float w = vita2d_texture_get_width(icon->texture);
+        float h = vita2d_texture_get_height(icon->texture);
+        float z0 = LIST_HEIGHT / w;
+        float z1 = LIST_HEIGHT / h;
+        float zoom = z0 < z1 ? z0 : z1;
+        vita2d_draw_texture_scale_rotate_hotspot(icon->texture,
+            LIST_LEFT + (LIST_HEIGHT / 2),
+            LIST_TOP(row) + (LIST_HEIGHT / 2),
+            zoom, zoom,
+            0,
+            w / 2,
+            h / 2
+        );
+    }
+
+    char *text = calloc(sizeof(char), 1);
+    aprintf(&text, "%s %s", curr->title_id, curr->title);
+
+    int text_height = vita2d_pgf_text_height(font, 1.0, text);
+    int text_top_margin = (LIST_HEIGHT - text_height) / 2;
+
+    vita2d_pgf_draw_text(font,
+                         LIST_TEXT_LEFT,// + text_left_margin,
+                         LIST_TOP(row) + text_top_margin + text_height,
+                         WHITE, 1.0, text);
+    free(text);
+}
+
+void draw_list(appinfo *curr) {
+    // __________tm_bat
+    // |__|___________|
+    // |__|___________|
+    // |__|___________|
+    // |__|___________|
+    // ------helps-----
+    vita2d_draw_rectangle(ITEMS_PANEL_LEFT, ITEMS_PANEL_TOP,
+                          ITEMS_PANEL_WIDTH, ITEMS_PANEL_HEIGHT, BLACK);
+
+    for (int i = 0; curr && i < LIST_ROW; i++, curr = curr->next) {
+        draw_list_row(curr, i);
     }
 }
 
@@ -249,6 +334,13 @@ void draw_appinfo(ScreenState state, appinfo *info) {
                 "FORMAT", 1.0,
                 (state >= FORMAT_MODE && state <=FORMAT_FAIL));
 
+    if (config.use_dpad && state == PRINT_APPINFO) {
+        vita2d_draw_rectangle(APPINFO_BUTTON_LEFT,
+                              APPINFO_BUTTON_TOP(select_appinfo_button),
+                              APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
+                              LIGHT_GRAY);
+    }
+
     vita2d_draw_rectangle(APPINFO_DESC_LEFT, APPINFO_DESC_TOP,
                           APPINFO_DESC_WIDTH, APPINFO_DESC_HEIGHT,
                           LIGHT_SLATE_GRAY);
@@ -333,6 +425,12 @@ void draw_slots(appinfo *info, int slot) {
                     slot_string ? slot_string : "empty", 1.0,
                     (slot == i));
 
+        if (slot < 0 && config.use_dpad && select_slot == i) {
+            vita2d_draw_rectangle(SLOT_BUTTON_LEFT, SLOT_BUTTON_TOP(i),
+                                  SLOT_BUTTON_WIDTH, SLOT_BUTTON_HEIGHT,
+                                  LIGHT_GRAY);
+        }
+
         if (slot_string) {
             free(slot_string);
         }
@@ -363,8 +461,18 @@ char* error_message(ProcessError error) {
 #define IS_TOUCHED(rect, pt) \
     (IN_RANGE(rect.left, rect.right, pt.x) && IN_RANGE(rect.top, rect.bottom, pt.y))
 
-ScreenState on_mainscreen_event(int steps, int *step, appinfo **curr,
-                                appinfo **touched) {
+ScreenState on_mainscreen_event_with_touch(int steps, int *step, appinfo **curr,
+                                           appinfo **touched) {
+    int moves = 0;
+    switch (mainscreen_list_mode) {
+        case USE_LIST:
+            moves = 1;
+            break;
+        case USE_ICON:
+        default:
+            moves = ICONS_COL;
+            break;
+    }
     int btn = read_buttons();
 
     if (btn & SCE_CTRL_HOLD) {
@@ -376,7 +484,7 @@ ScreenState on_mainscreen_event(int steps, int *step, appinfo **curr,
             return UNKNOWN;
         }
         *step -= 1;
-        for (int i = 0; i < ITEM_COL; i++, *curr = (*curr)->prev) {
+        for (int i = 0; i < moves; i++, *curr = (*curr)->prev) {
             unload_icon(*curr);
         }
         return MAIN_SCREEN;
@@ -386,7 +494,7 @@ ScreenState on_mainscreen_event(int steps, int *step, appinfo **curr,
             return UNKNOWN;
         }
         *step += 1;
-        for (int i = 0; i < ITEM_COL; i++, *curr = (*curr)->next) {
+        for (int i = 0; i < moves; i++, *curr = (*curr)->next) {
             unload_icon(*curr);
         }
         return MAIN_SCREEN;
@@ -398,7 +506,7 @@ ScreenState on_mainscreen_event(int steps, int *step, appinfo **curr,
     }
 
     appinfo *tmp = *curr;
-    for (int i = 0; tmp && i < (ITEM_COL * ITEM_ROW); i++, tmp = tmp->next) {
+    for (int i = 0; tmp && i < (ICONS_COL * ICONS_ROW); i++, tmp = tmp->next) {
         if (IS_TOUCHED(tmp->icon.touch_area, p)) {
             *touched = tmp;
             return PRINT_APPINFO;
@@ -406,6 +514,110 @@ ScreenState on_mainscreen_event(int steps, int *step, appinfo **curr,
     }
 
     return UNKNOWN;
+}
+
+int selectable_count(appinfo *curr, int row, int col) {
+    int selectable_count = 0;
+    while (curr && selectable_count < (row * col)) {
+        selectable_count += 1;
+        curr = curr->next;
+    }
+    return selectable_count;
+}
+
+#define IS_OVERFLOW() ( \
+        select_row * max_col + select_col >= \
+        selectable_count(*curr, max_row, max_col) \
+    )
+ScreenState on_mainscreen_event_with_dpad(int steps, int *step, appinfo **curr,
+                                          appinfo **touched) {
+    int moves;
+    int max_row;
+    int max_col;
+    switch (mainscreen_list_mode) {
+        case USE_LIST:
+            moves = 1;
+            max_row = LIST_ROW;
+            max_col = 1;
+            break;
+        case USE_ICON:
+        default:
+            moves = ICONS_COL;
+            max_row = ICONS_ROW;
+            max_col = ICONS_COL;
+            break;
+    }
+
+    int btn = read_buttons();
+
+    if (btn & SCE_CTRL_UP) {
+        if (select_row == 0) {
+            if (*step == 0) {
+                return UNKNOWN;
+            }
+            *step -= 1;
+            for (int i = 0; i < moves; i++, *curr = (*curr)->prev) {
+                unload_icon(*curr);
+            }
+        } else {
+            select_row -= 1;
+        }
+        return MAIN_SCREEN;
+    }
+    if (btn & SCE_CTRL_DOWN) {
+        if (select_row + 1 == max_row) {
+            if (*step == steps) {
+                return UNKNOWN;
+            }
+            *step += 1;
+            for (int i = 0; i < moves; i++, *curr = (*curr)->next) {
+                unload_icon(*curr);
+            }
+        } else {
+            select_row += 1;
+        }
+        if (IS_OVERFLOW()) {
+            select_row -= 1;
+        }
+        return MAIN_SCREEN;
+    }
+    if (btn & SCE_CTRL_LEFT) {
+        select_col -= 1;
+        if (select_col < 0) {
+            select_col = 0;
+        }
+        return MAIN_SCREEN;
+    }
+    if (btn & SCE_CTRL_RIGHT) {
+        select_col += 1;
+        if (select_col >= max_col) {
+            select_col = max_col - 1;
+        }
+        if (IS_OVERFLOW()) {
+            select_col -= 1;
+        }
+        return MAIN_SCREEN;
+    }
+
+    if (!(btn & SCE_CTRL_HOLD) && btn & SCE_CTRL_ENTER) {
+        appinfo *tmp = *curr;
+        for (int i = 0; tmp && i < (select_row * max_col) + select_col;
+                i++, tmp = tmp->next);
+        *touched = tmp;
+        select_appinfo_button = 0;
+        return PRINT_APPINFO;
+    }
+
+    return UNKNOWN;
+}
+#undef IS_OVERFLOW
+
+ScreenState on_mainscreen_event(int steps, int *step, appinfo **curr,
+                                appinfo **touched) {
+    if (config.use_dpad) {
+        return on_mainscreen_event_with_dpad(steps, step, curr, touched);
+    }
+    return on_mainscreen_event_with_touch(steps, step, curr, touched);
 }
 
 #define APPINFO_BUTTON_AREA(n) \
@@ -442,7 +654,7 @@ ScreenState on_appinfo_button_event(point p) {
 
 #undef APPINFO_BUTTON_AREA
 
-ScreenState on_appinfo_event() {
+ScreenState on_appinfo_event_with_touch() {
     static rectangle appinfo_area = {
         .left = APPINFO_PANEL_LEFT,
         .top = APPINFO_PANEL_TOP,
@@ -469,7 +681,53 @@ ScreenState on_appinfo_event() {
     return on_appinfo_button_event(p);
 }
 
-ScreenState on_slot_event(int *slot) {
+ScreenState on_appinfo_event_with_dpad() {
+    int btn = read_buttons();
+    if (btn & SCE_CTRL_HOLD) {
+        return UNKNOWN;
+    }
+
+    if (btn & SCE_CTRL_UP) {
+        select_appinfo_button -= 1;
+        if (select_appinfo_button < 0) {
+            select_appinfo_button = 0;
+        }
+        return PRINT_APPINFO;
+    }
+    if (btn & SCE_CTRL_DOWN) {
+        select_appinfo_button += 1;
+        if (select_appinfo_button >= APPINFO_BUTTON) {
+            select_appinfo_button = APPINFO_BUTTON - 1;
+        }
+        return PRINT_APPINFO;
+    }
+    if (btn & SCE_CTRL_CANCEL) {
+        return MAIN_SCREEN;
+    }
+    if (btn & SCE_CTRL_ENTER) {
+        select_slot = 0;
+        switch (select_appinfo_button) {
+            case 0:
+                return BACKUP_MODE;
+            case 1:
+                return RESTORE_MODE;
+            case 2:
+                return DELETE_MODE;
+            case 3:
+                return FORMAT_MODE;
+        }
+    }
+    return UNKNOWN;
+}
+
+ScreenState on_appinfo_event() {
+    if (config.use_dpad) {
+        return on_appinfo_event_with_dpad();
+    }
+    return on_appinfo_event_with_touch();
+}
+
+ScreenState on_slot_event_with_touch(int *slot) {
     *slot = -1;
     int btn = read_buttons();
 
@@ -500,6 +758,41 @@ ScreenState on_slot_event(int *slot) {
         }
     }
     return UNKNOWN;
+}
+
+ScreenState on_slot_event_with_dpad(int *slot) {
+    *slot = -1;
+    int btn = read_buttons();
+
+    if (btn & SCE_CTRL_UP) {
+        select_slot -= 1;
+        if (select_slot < 0) {
+            select_slot = 0;
+        }
+        return UNKNOWN;
+    }
+    if (btn & SCE_CTRL_DOWN) {
+        select_slot += 1;
+        if (select_slot >= SLOT_BUTTON) {
+            select_slot = SLOT_BUTTON - 1;
+        }
+        return UNKNOWN;
+    }
+    if (!(btn & SCE_CTRL_HOLD) && btn & SCE_CTRL_CANCEL) {
+        return PRINT_APPINFO;
+    }
+    if (!(btn & SCE_CTRL_HOLD) && btn & SCE_CTRL_ENTER) {
+        *slot = select_slot;
+        return UNKNOWN;
+    }
+    return UNKNOWN;
+}
+
+ScreenState on_slot_event(int *slot) {
+    if (config.use_dpad) {
+        return on_slot_event_with_dpad(slot);
+    }
+    return on_slot_event_with_touch(slot);
 }
 
 int copy_savedata_to_slot(appinfo *info, int slot) {
@@ -652,7 +945,14 @@ void draw_screen(ScreenState state, appinfo *curr, appinfo *choose, int slot) {
             //draw header
 
             //draw footer
-            draw_icons(curr);
+            switch (mainscreen_list_mode) {
+                case USE_ICON:
+                    draw_icons(curr);
+                    break;
+                case USE_LIST:
+                    draw_list(curr);
+                    break;
+            }
         }
 
         if (state >= PRINT_APPINFO) {
@@ -771,8 +1071,19 @@ void mainloop() {
         return;
     }
 
-    int rows = (list.count / ITEM_COL) + ((list.count % ITEM_COL) ? 1 : 0);
-    int steps = rows - ITEM_ROW;
+    int rows;
+    int steps;
+    switch (mainscreen_list_mode) {
+        case USE_LIST:
+            rows = list.count;
+            steps = rows - LIST_ROW;
+            break;
+        case USE_ICON:
+        default:
+            rows = (list.count / ICONS_COL) + ((list.count % ICONS_COL) ? 1 : 0);
+            steps = rows - ICONS_ROW;
+            break;
+    }
     printf("total: %d row: %d steps: %d\n", list.count, rows, steps);
 
     if (steps < 0) {
@@ -835,7 +1146,7 @@ void mainloop() {
                     break;
             }
             if (new_state == UNKNOWN) {
-                continue;
+                break;
             }
 
             state = new_state;
@@ -859,9 +1170,12 @@ int main() {
     // if before start VitaShell or this application,
     // will remain garbage in the kernel, taiLoadStartKernelModule will return
     // always 0x8002D013
-    if (kernel_modid != 0x8002D013 && kernel_modid < 0) {
-        printf("cannot find user module %x\n", user_modid);
-        goto error_module_load;
+    // also travis cppcheck is too old version, cannot check properly
+    if (kernel_modid < 0) {
+        if (kernel_modid != 0x8002D013)  {
+            printf("cannot find kernel module %x\n", kernel_modid);
+            goto error_module_load;
+        }
     }
     user_modid = sceKernelLoadStartModule(MODULE_PATH "/user.suprx",
                                           0, NULL, 0, NULL, NULL);
@@ -880,6 +1194,12 @@ int main() {
 
     sceAppMgrUmount("app0:");
     sceAppMgrUmount("savedata0:");
+
+    if (strncmp(config.list_mode, "icon", 4) == 0) {
+        mainscreen_list_mode = USE_ICON;
+    } else if (strncmp(config.list_mode, "list", 4) == 0) {
+        mainscreen_list_mode = USE_LIST;
+    }
 
     init_input();
     init_console();

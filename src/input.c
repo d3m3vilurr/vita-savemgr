@@ -55,14 +55,19 @@ int read_buttons() {
         pad.buttons |= SCE_CTRL_UP;
     } else if (pad.ly > 0xef) {
         pad.buttons |= SCE_CTRL_DOWN;
+    } else if (pad.lx < 0x10) {
+        pad.buttons |= SCE_CTRL_LEFT;
+    } else if (pad.lx > 0xef) {
+        pad.buttons |= SCE_CTRL_RIGHT;
     }
+
     curr = pad.buttons;
     btn = pad.buttons & ~old;
     if (curr && old == curr) {
         hold_times += 1;
         if (hold_times >= 10) {
             btn = curr;
-            hold_times = 10;
+            hold_times = 8;
             btn |= SCE_CTRL_HOLD;
         }
     } else {
