@@ -78,6 +78,10 @@ typedef enum {
 
 DrawListMode mainscreen_list_mode;
 
+int select_row = 0;
+int select_col = 0;
+int select_appinfo_button = 0;
+
 char *save_dir_path(const appinfo *info) {
     //if (strncmp(info->dev, "gro0", 4) == 0) {
     char *path = calloc(sizeof(char), 1);
@@ -120,9 +124,6 @@ char *slot_sfo_path(const appinfo *info, int slot) {
     free(t0);
     return path;
 }
-
-int select_row = 0;
-int select_col = 0;
 
 void draw_icon(icon_data *icon, int row, int col) {
     if (config.use_dpad && row == select_row && col == select_col) {
@@ -330,6 +331,13 @@ void draw_appinfo(ScreenState state, appinfo *info) {
                 APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
                 "FORMAT", 1.0,
                 (state >= FORMAT_MODE && state <=FORMAT_FAIL));
+
+    if (config.use_dpad && state == PRINT_APPINFO) {
+        vita2d_draw_rectangle(APPINFO_BUTTON_LEFT,
+                              APPINFO_BUTTON_TOP(select_appinfo_button),
+                              APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
+                              LIGHT_GRAY);
+    }
 
     vita2d_draw_rectangle(APPINFO_DESC_LEFT, APPINFO_DESC_TOP,
                           APPINFO_DESC_WIDTH, APPINFO_DESC_HEIGHT,
@@ -592,6 +600,7 @@ ScreenState on_mainscreen_event_with_dpad(int steps, int *step, appinfo **curr,
         for (int i = 0; tmp && i < (select_row * max_col) + select_col;
                 i++, tmp = tmp->next);
         *touched = tmp;
+        select_appinfo_button = 0;
         return PRINT_APPINFO;
     }
 
@@ -641,7 +650,7 @@ ScreenState on_appinfo_button_event(point p) {
 
 #undef APPINFO_BUTTON_AREA
 
-ScreenState on_appinfo_event() {
+ScreenState on_appinfo_event_with_touch() {
     static rectangle appinfo_area = {
         .left = APPINFO_PANEL_LEFT,
         .top = APPINFO_PANEL_TOP,
@@ -667,6 +676,52 @@ ScreenState on_appinfo_event() {
 
     return on_appinfo_button_event(p);
 }
+
+ScreenState on_appinfo_event_with_dpad() {
+    int btn = read_buttons();
+    if (btn & SCE_CTRL_HOLD) {
+        return UNKNOWN;
+    }
+
+    if (btn & SCE_CTRL_UP) {
+        select_appinfo_button -= 1;
+        if (select_appinfo_button < 0) {
+            select_appinfo_button = 0;
+        }
+        return PRINT_APPINFO;
+    }
+    if (btn & SCE_CTRL_DOWN) {
+        select_appinfo_button += 1;
+        if (select_appinfo_button >= APPINFO_BUTTON) {
+            select_appinfo_button = APPINFO_BUTTON - 1;
+        }
+        return PRINT_APPINFO;
+    }
+    if (btn & SCE_CTRL_CANCEL) {
+        return MAIN_SCREEN;
+    }
+    if (btn & SCE_CTRL_ENTER) {
+        switch (select_appinfo_button) {
+            case 0:
+                return BACKUP_MODE;
+            case 1:
+                return RESTORE_MODE;
+            case 2:
+                return DELETE_MODE;
+            case 3:
+                return FORMAT_MODE;
+        }
+    }
+    return UNKNOWN;
+}
+
+ScreenState on_appinfo_event() {
+    if (config.use_dpad) {
+        return on_appinfo_event_with_dpad();
+    }
+    return on_appinfo_event_with_touch();
+}
+
 
 ScreenState on_slot_event(int *slot) {
     *slot = -1;
