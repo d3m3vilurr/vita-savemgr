@@ -9,6 +9,8 @@ If you want to use another dump directory format, make simple `config.ini` file 
 ```ini
 base=/data/savegames
 slot_format=%s_SLOT%d
+list_mode=list
+use_dpad=true
 ```
 
 Default config like this; it will save to `ux0:data/savegames/PCSH00000/SLOT0`
@@ -16,6 +18,8 @@ Default config like this; it will save to `ux0:data/savegames/PCSH00000/SLOT0`
 ```ini
 base=/data/savegames
 slot_format=%s/SLOT%d
+list_mode=icon
+use_dpad=true
 ```
 
 ## Development
