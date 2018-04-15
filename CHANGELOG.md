@@ -1,4 +1,6 @@
 ## Unreleased
+- Re-add list mode (#69, 266fad1d)
+- Add button only mode (#63, e0641e54, 3e6796bd, 864814fa)
 
 ## 2.0.0
 - Re-enable package compression (cdf1833c)
