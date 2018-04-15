@@ -190,7 +190,17 @@ void draw_list_row(appinfo *curr, int row) {
             h / 2
         );
     }
-    // drow app name
+
+    char *text = calloc(sizeof(char), 1);
+    aprintf(&text, "%s %s", curr->title_id, curr->title);
+
+    int text_height = vita2d_pgf_text_height(font, 1.0, text);
+    int text_top_margin = (LIST_HEIGHT - text_height) / 2;
+
+    vita2d_pgf_draw_text(font,
+                         LIST_TEXT_LEFT,// + text_left_margin,
+                         LIST_TOP(row) + text_top_margin + text_height,
+                         WHITE, 1.0, text);
 }
 
 void draw_list(appinfo *curr) {
@@ -203,7 +213,7 @@ void draw_list(appinfo *curr) {
     vita2d_draw_rectangle(ITEMS_PANEL_LEFT, ITEMS_PANEL_TOP,
                           ITEMS_PANEL_WIDTH, ITEMS_PANEL_HEIGHT, BLACK);
 
-    for (int i = 0; curr && i < ICONS_ROW; i++, curr = curr->next) {
+    for (int i = 0; curr && i < LIST_ROW; i++, curr = curr->next) {
         draw_list_row(curr, i);
     }
 }
@@ -414,6 +424,16 @@ char* error_message(ProcessError error) {
 
 ScreenState on_mainscreen_event(int steps, int *step, appinfo **curr,
                                 appinfo **touched) {
+    int moves = 0;
+    switch (mainscreen_list_mode) {
+        case USE_LIST:
+            moves = 1;
+            break;
+        case USE_ICON:
+        default:
+            moves = ICONS_COL;
+            break;
+    }
     int btn = read_buttons();
 
     if (btn & SCE_CTRL_HOLD) {
@@ -425,7 +445,7 @@ ScreenState on_mainscreen_event(int steps, int *step, appinfo **curr,
             return UNKNOWN;
         }
         *step -= 1;
-        for (int i = 0; i < ICONS_COL; i++, *curr = (*curr)->prev) {
+        for (int i = 0; i < moves; i++, *curr = (*curr)->prev) {
             unload_icon(*curr);
         }
         return MAIN_SCREEN;
@@ -435,7 +455,7 @@ ScreenState on_mainscreen_event(int steps, int *step, appinfo **curr,
             return UNKNOWN;
         }
         *step += 1;
-        for (int i = 0; i < ICONS_COL; i++, *curr = (*curr)->next) {
+        for (int i = 0; i < moves; i++, *curr = (*curr)->next) {
             unload_icon(*curr);
         }
         return MAIN_SCREEN;
@@ -827,8 +847,20 @@ void mainloop() {
         return;
     }
 
-    int rows = (list.count / ICONS_COL) + ((list.count % ICONS_COL) ? 1 : 0);
-    int steps = rows - ICONS_ROW;
+    int rows;
+    int steps;
+    int moves = 0;
+    switch (mainscreen_list_mode) {
+        case USE_LIST:
+            rows = list.count;
+            steps = rows - LIST_ROW;
+            break;
+        case USE_ICON:
+        default:
+            rows = (list.count / ICONS_COL) + ((list.count % ICONS_COL) ? 1 : 0);
+            steps = rows - ICONS_ROW;
+            break;
+    }
     printf("total: %d row: %d steps: %d\n", list.count, rows, steps);
 
     if (steps < 0) {
