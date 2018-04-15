@@ -47,5 +47,4 @@ void load_config() {
     if (!config.list_mode) {
         config.list_mode = strdup(DEFAULT_LIST_MODE);
     }
-    config.use_dpad = 1;
 }
