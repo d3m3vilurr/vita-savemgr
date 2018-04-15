@@ -81,6 +81,7 @@ DrawListMode mainscreen_list_mode;
 int select_row = 0;
 int select_col = 0;
 int select_appinfo_button = 0;
+int select_slot = 0;
 
 char *save_dir_path(const appinfo *info) {
     //if (strncmp(info->dev, "gro0", 4) == 0) {
@@ -225,6 +226,7 @@ void draw_list_row(appinfo *curr, int row) {
                          LIST_TEXT_LEFT,// + text_left_margin,
                          LIST_TOP(row) + text_top_margin + text_height,
                          WHITE, 1.0, text);
+    free(text);
 }
 
 void draw_list(appinfo *curr) {
@@ -423,6 +425,12 @@ void draw_slots(appinfo *info, int slot) {
                     slot_string ? slot_string : "empty", 1.0,
                     (slot == i));
 
+        if (slot < 0 && config.use_dpad && select_slot == i) {
+            vita2d_draw_rectangle(SLOT_BUTTON_LEFT, SLOT_BUTTON_TOP(i),
+                                  SLOT_BUTTON_WIDTH, SLOT_BUTTON_HEIGHT,
+                                  LIGHT_GRAY);
+        }
+
         if (slot_string) {
             free(slot_string);
         }
@@ -541,10 +549,6 @@ ScreenState on_mainscreen_event_with_dpad(int steps, int *step, appinfo **curr,
     }
 
     int btn = read_buttons();
-
-    //if (btn & SCE_CTRL_HOLD) {
-    //    return UNKNOWN;
-    //}
 
     if (btn & SCE_CTRL_UP) {
         if (select_row == 0) {
@@ -701,6 +705,7 @@ ScreenState on_appinfo_event_with_dpad() {
         return MAIN_SCREEN;
     }
     if (btn & SCE_CTRL_ENTER) {
+        select_slot = 0;
         switch (select_appinfo_button) {
             case 0:
                 return BACKUP_MODE;
@@ -722,8 +727,7 @@ ScreenState on_appinfo_event() {
     return on_appinfo_event_with_touch();
 }
 
-
-ScreenState on_slot_event(int *slot) {
+ScreenState on_slot_event_with_touch(int *slot) {
     *slot = -1;
     int btn = read_buttons();
 
@@ -754,6 +758,41 @@ ScreenState on_slot_event(int *slot) {
         }
     }
     return UNKNOWN;
+}
+
+ScreenState on_slot_event_with_dpad(int *slot) {
+    *slot = -1;
+    int btn = read_buttons();
+
+    if (btn & SCE_CTRL_UP) {
+        select_slot -= 1;
+        if (select_slot < 0) {
+            select_slot = 0;
+        }
+        return UNKNOWN;
+    }
+    if (btn & SCE_CTRL_DOWN) {
+        select_slot += 1;
+        if (select_slot >= SLOT_BUTTON) {
+            select_slot = SLOT_BUTTON - 1;
+        }
+        return UNKNOWN;
+    }
+    if (!(btn & SCE_CTRL_HOLD) && btn & SCE_CTRL_CANCEL) {
+        return PRINT_APPINFO;
+    }
+    if (!(btn & SCE_CTRL_HOLD) && btn & SCE_CTRL_ENTER) {
+        *slot = select_slot;
+        return UNKNOWN;
+    }
+    return UNKNOWN;
+}
+
+ScreenState on_slot_event(int *slot) {
+    if (config.use_dpad) {
+        return on_slot_event_with_dpad(slot);
+    }
+    return on_slot_event_with_touch(slot);
 }
 
 int copy_savedata_to_slot(appinfo *info, int slot) {
@@ -1107,7 +1146,7 @@ void mainloop() {
                     break;
             }
             if (new_state == UNKNOWN) {
-                continue;
+                break;
             }
 
             state = new_state;

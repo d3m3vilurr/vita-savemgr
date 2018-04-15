@@ -65,9 +65,9 @@ int read_buttons() {
     btn = pad.buttons & ~old;
     if (curr && old == curr) {
         hold_times += 1;
-        if (hold_times >= 3000) {
+        if (hold_times >= 10) {
             btn = curr;
-            hold_times = 2000;
+            hold_times = 8;
             btn |= SCE_CTRL_HOLD;
         }
     } else {
