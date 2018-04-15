@@ -18,8 +18,8 @@
 #define SCREEN_HALF_HEIGHT          (SCREEN_HEIGHT / 2)
 #define HEADER_HEIGHT               40
 #define FOOTER_HEIGHT               0
-#define ITEM_ROW                    4
-#define ITEM_COL                    7
+#define ICONS_ROW                   4
+#define ICONS_COL                   7
 
 #define ITEMS_PANEL_PADDING         5
 #define ITEMS_PANEL_WIDTH           (SCREEN_WIDTH)
@@ -32,15 +32,25 @@
 #define ITEMS_INNER_LEFT            (ITEMS_PANEL_LEFT + ITEMS_PANEL_PADDING)
 #define ITEM_BOX_MARGIN             5
 #define ITEM_BOX_PADDING            0
-#define ITEM_BOX_WIDTH              (int)((ITEMS_PANEL_INNER_WIDTH - (ITEM_BOX_MARGIN * (ITEM_COL + 1))) / ITEM_COL)
-#define ITEM_BOX_HEIGHT             (int)((ITEMS_PANEL_INNER_HEIGHT - (ITEM_BOX_MARGIN * (ITEM_ROW + 1))) / ITEM_ROW)
-#define ICON_WIDTH                  (ITEM_BOX_WIDTH - (ITEM_BOX_PADDING * 2))
-#define ICON_HEIGHT                 (ITEM_BOX_HEIGHT - (ITEM_BOX_PADDING * 2))
+#define ITEM_BOX_TOP(y, h)          (ITEMS_INNER_TOP + (ITEM_BOX_MARGIN * ((y) + 1)) + ((h) * (y)))
+#define ITEM_BOX_LEFT(x, w)         (ITEMS_INNER_LEFT + (ITEM_BOX_MARGIN * ((x) + 1)) + ((w) * (x)))
+#define ITEM_BOX_WIDTH(col)         (int)((ITEMS_PANEL_INNER_WIDTH - (ITEM_BOX_MARGIN * ((col) + 1))) / (col))
+#define ITEM_BOX_HEIGHT(row)        (int)((ITEMS_PANEL_INNER_HEIGHT - (ITEM_BOX_MARGIN * ((row) + 1))) / (row))
 
-#define ITEM_BOX_TOP(y)             (ITEMS_INNER_TOP + (ITEM_BOX_MARGIN * ((y) + 1)) + (ITEM_BOX_HEIGHT * (y)))
-#define ITEM_BOX_LEFT(x)            (ITEMS_INNER_LEFT + (ITEM_BOX_MARGIN * ((x) + 1)) + (ITEM_BOX_WIDTH * (x)))
-#define ICON_TOP(y)                 (ITEM_BOX_TOP((y)) + ITEM_BOX_PADDING)
-#define ICON_LEFT(x)                (ITEM_BOX_LEFT((x)) + ITEM_BOX_PADDING)
+#define ICON_BOX_WIDTH              ITEM_BOX_WIDTH(ICONS_COL)
+#define ICON_BOX_HEIGHT             ITEM_BOX_HEIGHT(ICONS_ROW)
+#define ICON_WIDTH                  (ICON_BOX_WIDTH - (ITEM_BOX_PADDING * 2))
+#define ICON_HEIGHT                 (ICON_BOX_HEIGHT - (ITEM_BOX_PADDING * 2))
+#define ICON_TOP(y)                 (ITEM_BOX_TOP((y), ICON_BOX_HEIGHT) + ITEM_BOX_PADDING)
+#define ICON_LEFT(x)                (ITEM_BOX_LEFT((x), ICON_BOX_WIDTH) + ITEM_BOX_PADDING)
+
+#define LIST_ROW                    8
+#define LIST_BOX_WIDTH              ITEM_BOX_WIDTH(1)
+#define LIST_BOX_HEIGHT             ITEM_BOX_HEIGHT(LIST_ROW)
+#define LIST_WIDTH                  (LIST_BOX_WIDTH - (ITEM_BOX_PADDING * 2))
+#define LIST_HEIGHT                 (LIST_BOX_HEIGHT - (ITEM_BOX_PADDING * 2))
+#define LIST_TOP(y)                 (ITEM_BOX_TOP((y), LIST_BOX_HEIGHT) + ITEM_BOX_PADDING)
+#define LIST_LEFT                   (ITEM_BOX_LEFT(0, LIST_BOX_WIDTH) + ITEM_BOX_PADDING)
 
 #define APPINFO_PANEL_TOP           (ITEMS_PANEL_TOP)
 #define APPINFO_PANEL_LEFT          (ITEMS_PANEL_LEFT)
@@ -106,8 +116,10 @@
 #define OLD_RINCHEAT_SAVEDIR          "/data/rinCheat"
 #define OLD_RINCHEAT_SAVE_FORMAT      "%s_SAVEDATA"
 #define OLD_RINCHEAT_SAVE_SLOT_FORMAT "%s_SAVEDATA_SLOT_%d"
+
 #define DEFAULT_BASE_SAVEDIR          "/data/savegames"
 #define DEFAULT_SAVE_SLOT_FORMAT      "%s/SLOT%d"
+#define DEFAULT_LIST_MODE             "icon"
 
 #define SCE_CTRL_HOLD 0x80000000
 

@@ -71,6 +71,13 @@ typedef enum {
     ERROR_COPY_DIR,
 } ProcessError;
 
+typedef enum {
+    USE_ICON = 1,
+    USE_LIST,
+} DrawListMode;
+
+DrawListMode mainscreen_list_mode;
+
 char *save_dir_path(const appinfo *info) {
     //if (strncmp(info->dev, "gro0", 4) == 0) {
     char *path = calloc(sizeof(char), 1);
@@ -153,9 +160,51 @@ void draw_icons(appinfo *curr) {
     //appinfo *tmp = curr;
     //i = 0;
 
-    for (int i = 0; curr && i < (ITEM_COL * ITEM_ROW); i++, curr = curr->next) {
+    for (int i = 0; curr && i < (ICONS_COL * ICONS_ROW); i++, curr = curr->next) {
         load_icon(curr);
-        draw_icon(&curr->icon, i / ITEM_COL, i % ITEM_COL);
+        draw_icon(&curr->icon, i / ICONS_COL, i % ICONS_COL);
+    }
+}
+
+void draw_list_row(appinfo *curr, int row) {
+    load_icon(curr);
+    icon_data *icon = &curr->icon;
+
+    icon->touch_area.left = LIST_LEFT;
+    icon->touch_area.top = LIST_TOP(row);
+    icon->touch_area.right = icon->touch_area.left + LIST_WIDTH;
+    icon->touch_area.bottom = icon->touch_area.top + LIST_HEIGHT;
+
+    if (icon->texture) {
+        float w = vita2d_texture_get_width(icon->texture);
+        float h = vita2d_texture_get_height(icon->texture);
+        float z0 = LIST_HEIGHT / w;
+        float z1 = LIST_HEIGHT / h;
+        float zoom = z0 < z1 ? z0 : z1;
+        vita2d_draw_texture_scale_rotate_hotspot(icon->texture,
+            LIST_LEFT + (LIST_HEIGHT / 2),
+            LIST_TOP(row) + (LIST_HEIGHT / 2),
+            zoom, zoom,
+            0,
+            w / 2,
+            h / 2
+        );
+    }
+    // drow app name
+}
+
+void draw_list(appinfo *curr) {
+    // __________tm_bat
+    // |__|___________|
+    // |__|___________|
+    // |__|___________|
+    // |__|___________|
+    // ------helps-----
+    vita2d_draw_rectangle(ITEMS_PANEL_LEFT, ITEMS_PANEL_TOP,
+                          ITEMS_PANEL_WIDTH, ITEMS_PANEL_HEIGHT, BLACK);
+
+    for (int i = 0; curr && i < ICONS_ROW; i++, curr = curr->next) {
+        draw_list_row(curr, i);
     }
 }
 
@@ -376,7 +425,7 @@ ScreenState on_mainscreen_event(int steps, int *step, appinfo **curr,
             return UNKNOWN;
         }
         *step -= 1;
-        for (int i = 0; i < ITEM_COL; i++, *curr = (*curr)->prev) {
+        for (int i = 0; i < ICONS_COL; i++, *curr = (*curr)->prev) {
             unload_icon(*curr);
         }
         return MAIN_SCREEN;
@@ -386,7 +435,7 @@ ScreenState on_mainscreen_event(int steps, int *step, appinfo **curr,
             return UNKNOWN;
         }
         *step += 1;
-        for (int i = 0; i < ITEM_COL; i++, *curr = (*curr)->next) {
+        for (int i = 0; i < ICONS_COL; i++, *curr = (*curr)->next) {
             unload_icon(*curr);
         }
         return MAIN_SCREEN;
@@ -398,7 +447,7 @@ ScreenState on_mainscreen_event(int steps, int *step, appinfo **curr,
     }
 
     appinfo *tmp = *curr;
-    for (int i = 0; tmp && i < (ITEM_COL * ITEM_ROW); i++, tmp = tmp->next) {
+    for (int i = 0; tmp && i < (ICONS_COL * ICONS_ROW); i++, tmp = tmp->next) {
         if (IS_TOUCHED(tmp->icon.touch_area, p)) {
             *touched = tmp;
             return PRINT_APPINFO;
@@ -652,7 +701,14 @@ void draw_screen(ScreenState state, appinfo *curr, appinfo *choose, int slot) {
             //draw header
 
             //draw footer
-            draw_icons(curr);
+            switch (mainscreen_list_mode) {
+                case USE_ICON:
+                    draw_icons(curr);
+                    break;
+                case USE_LIST:
+                    draw_list(curr);
+                    break;
+            }
         }
 
         if (state >= PRINT_APPINFO) {
@@ -771,8 +827,8 @@ void mainloop() {
         return;
     }
 
-    int rows = (list.count / ITEM_COL) + ((list.count % ITEM_COL) ? 1 : 0);
-    int steps = rows - ITEM_ROW;
+    int rows = (list.count / ICONS_COL) + ((list.count % ICONS_COL) ? 1 : 0);
+    int steps = rows - ICONS_ROW;
     printf("total: %d row: %d steps: %d\n", list.count, rows, steps);
 
     if (steps < 0) {
@@ -880,6 +936,12 @@ int main() {
 
     sceAppMgrUmount("app0:");
     sceAppMgrUmount("savedata0:");
+
+    if (strncmp(config.list_mode, "icon", 4) == 0) {
+        mainscreen_list_mode = USE_ICON;
+    } else if (strncmp(config.list_mode, "list", 4) == 0) {
+        mainscreen_list_mode = USE_LIST;
+    }
 
     init_input();
     init_console();

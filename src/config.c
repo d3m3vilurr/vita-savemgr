@@ -24,6 +24,8 @@ static int handler(void* out,
         p->base = strdup(value);
     } else if (strcmp(name, "slot_format") == 0) {
         p->slot_format = strdup(value);
+    } else if (strcmp(name, "list_mode") == 0) {
+        p->list_mode = strdup(value);
     }
     return 1;
 }
@@ -39,5 +41,8 @@ void load_config() {
     }
     if (!config.slot_format) {
         config.slot_format = strdup(DEFAULT_SAVE_SLOT_FORMAT);
+    }
+    if (!config.list_mode) {
+        config.list_mode = strdup(DEFAULT_LIST_MODE);
     }
 }

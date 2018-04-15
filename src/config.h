@@ -7,6 +7,7 @@ extern char app_title[256];
 typedef struct configure {
     const char *base;
     const char *slot_format;
+    const char *list_mode;
 } configure;
 
 extern configure config;
