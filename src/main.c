@@ -507,8 +507,8 @@ int copy_savedata_to_slot(appinfo *info, int slot) {
     char *src = save_dir_path(info);
     char *dest = slot_dir_path(info, slot);
 
-    debugNetPrintf(DEBUG, "src: %s\n", src);
-    debugNetPrintf(DEBUG, "dest: %s\n", dest);
+    printf("src: %s\n", src);
+    printf("dest: %s\n", dest);
 
     if (!src) {
         // TODO: need popup; need start game
@@ -549,8 +549,8 @@ int copy_slot_to_savedata(appinfo *info, int slot) {
     char *src = slot_dir_path(info, slot);
     char *dest = save_dir_path(info);
 
-    debugNetPrintf(DEBUG, "src: %s\n", src);
-    debugNetPrintf(DEBUG, "dest: %s\n", dest);
+    printf("src: %s\n", src);
+    printf("dest: %s\n", dest);
 
     if (!dest) {
         res = ERROR_NO_SAVE_DIR;
@@ -596,7 +596,7 @@ int delete_slot(appinfo *info, int slot) {
     int res = NO_ERROR;
     char *target = slot_dir_path(info, slot);
 
-    debugNetPrintf(DEBUG, "target: %s\n", target);
+    printf("target: %s\n", target);
 
     if (!target) {
         res = ERROR_MEMORY_ALLOC;
