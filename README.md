@@ -2,7 +2,7 @@ Dump & restore decrypted savefile.
 [![Build Status](https://travis-ci.org/d3m3vilurr/vita-savemgr.svg?branch=master)](https://travis-ci.org/d3m3vilurr/vita-savemgr)
 
 ## Configure
-R trigger in mainscreen will open simple configure screen.
+Select button in mainscreen will open simple configure screen.
 Or you can change `ux0:data/savemgr/config.ini` manually.
 
 If you want to use another dump directory format, current time you need modify
