@@ -47,6 +47,7 @@ add_executable(${PROJECT_NAME}.elf
     src/config.c
     src/util.c
     src/main.c
+    src/system.c
     src/vita_sqlite.c
 
     sqlite3/sqlite3.c
@@ -71,6 +72,7 @@ target_link_libraries(${PROJECT_NAME}.elf
     -lSceTouch_stub
     -lScePgf_stub
     -lSceShellSvc_stub
+    -lSceRegistryMgr_stub
     -ltaihen_stub
     -lVitaShellUser_stub_weak
 

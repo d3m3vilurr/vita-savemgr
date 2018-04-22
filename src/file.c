@@ -4,8 +4,6 @@
 #include <psp2/io/stat.h>
 #include <psp2/io/fcntl.h>
 #include <psp2/io/dirent.h>
-#include <psp2/appmgr.h>
-#include <vitashell_user.h>
 
 #include "common.h"
 #include "file.h"
@@ -276,49 +274,3 @@ int copydir(const char *src, const char *dest, void (*callback)()) {
     return 1;
 }
 
-// below codes are part of vitashell
-char pfs_mount_point[MAX_MOUNT_POINT_LENGTH];
-int known_pfs_ids[] = {
-  0x6E,
-  0x12E,
-  0x12F,
-  0x3ED,
-};
-
-int pfs_mount(const char *path) {
-    char klicensee[0x10];
-    //char license_buf[0x200];
-    ShellMountIdArgs args;
-
-    memset(klicensee, 0, sizeof(klicensee));
-
-    args.process_titleid = "SAVEMGR00";
-    args.path = path;
-    args.desired_mount_point = NULL;
-    args.klicensee = klicensee;
-    args.mount_point = pfs_mount_point;
-
-    int i;
-    for (i = 0; i < sizeof(known_pfs_ids) / sizeof(int); i++) {
-        args.id = known_pfs_ids[i];
-
-        int res = shellUserMountById(&args);
-        if (res >= 0)
-            return res;
-    }
-
-    return sceAppMgrGameDataMount(path, 0, 0, pfs_mount_point);
-}
-
-int pfs_unmount() {
-    if (pfs_mount_point[0] == 0)
-        return -1;
-
-    int res = sceAppMgrUmount(pfs_mount_point);
-    if (res >= 0) {
-        memset(pfs_mount_point, 0, sizeof(pfs_mount_point));
-        //memset(pfs_mounted_path, 0, sizeof(pfs_mounted_path));
-    }
-
-    return res;
-}

@@ -24,6 +24,7 @@
 #include "display.h"
 #include "input.h"
 #include "util.h"
+#include "system.h"
 
 vita2d_pgf* font;
 SceUID kernel_modid = -1;
@@ -972,8 +973,17 @@ int copy_slot_to_savedata(appinfo *info, int slot) {
         goto exit;
     }
 
+    char *sfo_path = calloc(sizeof(char), 1);
+    aprintf(&sfo_path, "%s/sce_sys/param.sfo", dest);
+    printf("sfo_path %s\n",  sfo_path);
+    if (exists(sfo_path)) {
+        change_accountid(sfo_path, get_accountid());
+    }
+    free(sfo_path);
+
 exit:
     pfs_unmount();
+
     unlock_psbutton();
     if (src) {
         free(src);
