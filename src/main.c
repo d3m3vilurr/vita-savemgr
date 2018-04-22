@@ -507,7 +507,7 @@ ScreenState on_mainscreen_event_with_touch(int steps, int *step, appinfo **curr,
         return UNKNOWN;
     }
 
-    if (btn & SCE_CTRL_RTRIGGER) {
+    if (btn & SCE_CTRL_SELECT) {
         select_config = 2;
         return CONFIG_SCREEN;
     }
