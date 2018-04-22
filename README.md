@@ -11,7 +11,7 @@ ini file.
 for example, if you want to use `ux0:data/savegames/PCSH00000_SLOT0`,
 
 ```ini
-base=/data/savegames
+base=ur0:/data/savegames
 slot_format=%s_SLOT%d
 ```
 

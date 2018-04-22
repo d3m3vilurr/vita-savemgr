@@ -22,6 +22,17 @@ static int handler(void* out,
 
     if (strcmp(name, "base") == 0) {
         p->base = strdup(value);
+
+        if (strncmp("ux0:", value, 4) == 0 ||
+                strncmp("ur0:", value, 4) == 0||
+                strncmp("uma0:", value, 4) == 0) {
+            p->base = strdup(value);
+        } else {
+            char *base_path = calloc(sizeof(char), 1);
+            aprintf(&base_path, "ux0:%s", value);
+            p->base = strdup(base_path);
+            free(base_path);
+        }
     } else if (strcmp(name, "slot_format") == 0) {
         p->slot_format = strdup(value);
     } else if (strcmp(name, "list_mode") == 0) {

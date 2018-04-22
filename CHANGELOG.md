@@ -3,6 +3,7 @@
 - Add button only mode (#63, e0641e54, 3e6796bd, 864814fa)
 - Open simple configure screen at press SELECT btn in mainscreen (#72)
 - Auto replace ACCOUNT_ID in param.sfo (#75)
+- Support `ur0:` and `uma0` for the save dump storage (#60)
 
 ## 2.0.0
 - Re-enable package compression (cdf1833c)

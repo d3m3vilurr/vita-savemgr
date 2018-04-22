@@ -106,26 +106,20 @@ char *save_dir_path(const appinfo *info) {
 }
 
 char *slot_dir_path(const appinfo *info, int slot) {
-    char *t0 = calloc(sizeof(char), 1);
-    char *t1 = calloc(sizeof(char), 1);
+    char *tmp = calloc(sizeof(char), 1);
     char *path = calloc(sizeof(char), 1);
-    aprintf(&t0, "%s/%s", config.base, config.slot_format);
-    aprintf(&t1, t0, info->title_id, slot);
-    aprintf(&path, "ux0:%s", t1);
-    free(t1);
-    free(t0);
+    aprintf(&tmp, "%s/%s", config.base, config.slot_format);
+    aprintf(&path, tmp, info->title_id, slot);
+    free(tmp);
     return path;
 }
 
 char *slot_sfo_path(const appinfo *info, int slot) {
-    char *t0 = calloc(sizeof(char), 1);
-    char *t1 = calloc(sizeof(char), 1);
+    char *tmp = calloc(sizeof(char), 1);
     char *path = calloc(sizeof(char), 1);
-    aprintf(&t0, "%s/%s/sce_sys/param.sfo", config.base, config.slot_format);
-    aprintf(&t1, t0, info->title_id, slot);
-    aprintf(&path, "ux0:%s", t1);
-    free(t1);
-    free(t0);
+    aprintf(&tmp, "%s/%s/sce_sys/param.sfo", config.base, config.slot_format);
+    aprintf(&path, tmp, info->title_id, slot);
+    free(tmp);
     return path;
 }
 
@@ -1307,10 +1301,9 @@ int main() {
 
     load_config();
 
-    char *base_path = calloc(sizeof(char), 1);
-    aprintf(&base_path, "ux0:%s", config.base);
-    mkdir(base_path, 0777);
-    free(base_path);
+    printf("use %s for savedata backup\n", config.base);
+
+    mkdir(config.base, 0777);
     mkdir("ux0:/data/savemgr", 0777);
 
     sceAppMgrUmount("app0:");
