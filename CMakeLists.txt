@@ -9,7 +9,7 @@ set(TITLE "Save Manager")
 set(VERSION "2.0.0")
 
 execute_process(COMMAND
-    python -c "print '%02d.%02d' % tuple(map(lambda x: int(x), '${VERSION}'.split('.')[:2]))"
+    python -c "print ('%02d.%02d' % tuple(map(lambda x: int(x), '${VERSION}'.split('.')[:2])))"
     OUTPUT_VARIABLE APP_VER
 )
 string(REPLACE "\n" "" APP_VER "${APP_VER}")
