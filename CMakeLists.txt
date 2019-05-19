@@ -39,12 +39,15 @@ add_custom_target(vitashell_kernel_module
     COMMAND cp kernel.skprx ${CMAKE_SOURCE_DIR}/sce_sys/kernel.skprx
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/extern/vitashell/modules/kernel)
 
-add_custom_target(vitashell_user_module
+add_custom_command(OUTPUT ${CMAKE_SOURCE_DIR}/extern/vitashell/modules/user/vitashell_user_stubs/libVitaShellUser_stub_weak.a
     DEPENDS vitashell_kernel_module
     COMMAND ${CMAKE_COMMAND} .
     COMMAND make
     COMMAND cp user.suprx ${CMAKE_SOURCE_DIR}/sce_sys/user.suprx
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/extern/vitashell/modules/user)
+
+add_custom_target(vitashell_user_lib ALL DEPENDS ${CMAKE_SOURCE_DIR}/extern/vitashell/modules/user/vitashell_user_stubs/libVitaShellUser_stub_weak.a)
+add_custom_target(vitashell_user_module ALL DEPENDS vitashell_user_lib)
 
 include_directories(
     sqlite3

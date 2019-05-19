@@ -1,14 +1,10 @@
 language: c
+dist: xenial
 
 addons:
     apt:
-        sources:
-            - ubuntu-toolchain-r-test
-            - kalakris-cmake
         packages:
             - cppcheck
-            - curl
-            - cmake
             - patch
             - ninja-build
 
@@ -27,6 +23,7 @@ before_script:
 script:
     - cppcheck --error-exitcode=1 --enable=style,performance,portability src/*.c
     - mkdir build
+    - cmake --version
     - cd build && cmake -GNinja .. && ninja
 
 before_deploy:
