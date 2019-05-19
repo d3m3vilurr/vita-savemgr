@@ -1,3 +1,6 @@
 [submodule "extern/inih"]
 	path = extern/inih
 	url = https://github.com/benhoyt/inih
+[submodule "extern/vitashell"]
+	path = extern/vitashell
+	url = https://github.com/TheOfficialFloW/VitaShell.git
