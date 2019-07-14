@@ -1,0 +1,15 @@
+﻿---
+BasedOnStyle: LLVM
+AlignEscapedNewlines: Left
+AllowShortFunctionsOnASingleLine: InlineOnly
+BinPackArguments: false
+BinPackParameters: 'false'
+ColumnLimit: '80'
+IndentCaseLabels: true
+IndentWidth: '4'
+Language: Cpp
+MaxEmptyLinesToKeep: '1'
+SpaceBeforeRangeBasedForLoopColon: 'false'
+TabWidth: '4'
+
+...
