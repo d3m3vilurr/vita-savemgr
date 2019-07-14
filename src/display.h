@@ -3,7 +3,7 @@
 
 enum {
     CANCEL = 0,
-    CONFIRM = 1
+    CONFIRM = 1,
 };
 
 void init_console();

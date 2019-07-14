@@ -30,11 +30,13 @@ static int is_latin_char(const unsigned int c) {
     return 0;
 }
 
-vita2d_pgf* load_system_fonts() {
+vita2d_pgf *load_system_fonts() {
     vita2d_system_pgf_config configs[] = {
+        // clang-format off
         {SCE_FONT_LANGUAGE_KOREAN,  is_korean_char},
         {SCE_FONT_LANGUAGE_LATIN,   is_latin_char},
         {SCE_FONT_LANGUAGE_DEFAULT, NULL},
+        // clang-format on
     };
 
     return vita2d_load_system_pgf(3, configs);

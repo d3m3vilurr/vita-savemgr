@@ -1,5 +1,6 @@
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
+
 #include <psp2/ctrl.h>
 
 #include "common.h"
@@ -36,7 +37,10 @@ int confirm(const char *msg, float zoom) {
     vita2d_pgf_draw_text(font, left + padding, top + padding, BLACK, zoom, msg);
     vita2d_pgf_draw_text(font,
                          left + ((width - confirm_msg_width) / 2),
-                         top + height - 25, BLACK, zoom, confirm_msg);
+                         top + height - 25,
+                         BLACK,
+                         zoom,
+                         confirm_msg);
     vita2d_end_drawing();
     vita2d_wait_rendering_done();
     vita2d_swap_buffers();
@@ -73,7 +77,10 @@ int alert(const char *msg, float zoom) {
     vita2d_pgf_draw_text(font, left + padding, top + padding, BLACK, zoom, msg);
     vita2d_pgf_draw_text(font,
                          left + ((width - close_msg_width) / 2),
-                         top + height - 25, BLACK, zoom, close_msg);
+                         top + height - 25,
+                         BLACK,
+                         zoom,
+                         close_msg);
 
     vita2d_end_drawing();
     vita2d_wait_rendering_done();
@@ -107,11 +114,13 @@ void draw_progress() {
     int gauge_top = top + 50;
 
     vita2d_draw_rectangle(left, top, width, height, LIGHT_GRAY);
-    vita2d_draw_rectangle(gauge_left, gauge_top, gauge_width, gauge_height, BLACK);
+    vita2d_draw_rectangle(
+        gauge_left, gauge_top, gauge_width, gauge_height, BLACK);
 
     int progress_width = progress_curr * gauge_width / progress_max;
 
-    vita2d_draw_rectangle(gauge_left, gauge_top, progress_width, gauge_height, LIGHT_SKY_BLUE);
+    vita2d_draw_rectangle(
+        gauge_left, gauge_top, progress_width, gauge_height, LIGHT_SKY_BLUE);
 
     vita2d_end_drawing();
     vita2d_wait_rendering_done();

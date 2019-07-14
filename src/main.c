@@ -1,32 +1,33 @@
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
-#include <psp2/ctrl.h>
+
 #include <psp2/appmgr.h>
-#include <psp2/kernel/processmgr.h>
+#include <psp2/ctrl.h>
 #include <psp2/io/dirent.h>
 #include <psp2/io/fcntl.h>
-#include <psp2/ctrl.h>
-#include <psp2/touch.h>
-#include <psp2/system_param.h>
+#include <psp2/kernel/modulemgr.h>
+#include <psp2/kernel/processmgr.h>
 #include <psp2/rtc.h>
 #include <psp2/shellutil.h>
-#include <psp2/kernel/modulemgr.h>
-#include <vita2d.h>
-#include <taihen.h>
+#include <psp2/system_param.h>
+#include <psp2/touch.h>
 
+#include <taihen.h>
+#include <vita2d.h>
+
+#include "appdb.h"
 #include "common.h"
 #include "config.h"
-#include "appdb.h"
+#include "display.h"
 #include "file.h"
 #include "font.h"
-#include "display.h"
 #include "input.h"
-#include "util.h"
 #include "system.h"
+#include "util.h"
 
-vita2d_pgf* font;
+vita2d_pgf *font;
 SceUID kernel_modid = -1;
 SceUID user_modid = -1;
 
@@ -87,7 +88,7 @@ int select_slot = 0;
 int select_config = 2;
 
 char *save_dir_path(const appinfo *info) {
-    //if (strncmp(info->dev, "gro0", 4) == 0) {
+    // if (strncmp(info->dev, "gro0", 4) == 0) {
     char *path = calloc(sizeof(char), 1);
     aprintf(&path, "grw0:savedata/%s", info->real_id);
     if (exists(path)) {
@@ -145,13 +146,13 @@ void draw_icon(icon_data *icon, int row, int col) {
     float z1 = ICON_HEIGHT / h;
     float zoom = z0 < z1 ? z0 : z1;
     vita2d_draw_texture_scale_rotate_hotspot(icon->texture,
-        ICON_LEFT(col) + (ICON_WIDTH / 2),
-        ICON_TOP(row) + (ICON_HEIGHT / 2),
-        zoom, zoom,
-        0,
-        w / 2,
-        h / 2
-    );
+                                             ICON_LEFT(col) + (ICON_WIDTH / 2),
+                                             ICON_TOP(row) + (ICON_HEIGHT / 2),
+                                             zoom,
+                                             zoom,
+                                             0,
+                                             w / 2,
+                                             h / 2);
 }
 
 void draw_icons(appinfo *curr) {
@@ -162,14 +163,18 @@ void draw_icons(appinfo *curr) {
     // |__|__|__|__|__|
     // ------helps-----
 
-    vita2d_draw_rectangle(ITEMS_PANEL_LEFT, ITEMS_PANEL_TOP,
-                          ITEMS_PANEL_WIDTH, ITEMS_PANEL_HEIGHT, BLACK);
+    vita2d_draw_rectangle(ITEMS_PANEL_LEFT,
+                          ITEMS_PANEL_TOP,
+                          ITEMS_PANEL_WIDTH,
+                          ITEMS_PANEL_HEIGHT,
+                          BLACK);
 
-    //draw icons
-    //appinfo *tmp = curr;
-    //i = 0;
+    // draw icons
+    // appinfo *tmp = curr;
+    // i = 0;
 
-    for (int i = 0; curr && i < (ICONS_COL * ICONS_ROW); i++, curr = curr->next) {
+    for (int i = 0; curr && i < (ICONS_COL * ICONS_ROW);
+         i++, curr = curr->next) {
         load_icon(curr);
         draw_icon(&curr->icon, i / ICONS_COL, i % ICONS_COL);
     }
@@ -182,11 +187,8 @@ void draw_list_row(appinfo *curr, int row) {
                               LIST_WIDTH + ITEM_BOX_MARGIN * 2,
                               LIST_HEIGHT + ITEM_BOX_MARGIN * 2,
                               WHITE);
-        vita2d_draw_rectangle(LIST_LEFT,
-                              LIST_TOP(row),
-                              LIST_WIDTH,
-                              LIST_HEIGHT,
-                              BLACK);
+        vita2d_draw_rectangle(
+            LIST_LEFT, LIST_TOP(row), LIST_WIDTH, LIST_HEIGHT, BLACK);
     }
 
     load_icon(curr);
@@ -204,13 +206,14 @@ void draw_list_row(appinfo *curr, int row) {
         float z1 = LIST_HEIGHT / h;
         float zoom = z0 < z1 ? z0 : z1;
         vita2d_draw_texture_scale_rotate_hotspot(icon->texture,
-            LIST_LEFT + (LIST_HEIGHT / 2),
-            LIST_TOP(row) + (LIST_HEIGHT / 2),
-            zoom, zoom,
-            0,
-            w / 2,
-            h / 2
-        );
+                                                 LIST_LEFT + (LIST_HEIGHT / 2),
+                                                 LIST_TOP(row) +
+                                                     (LIST_HEIGHT / 2),
+                                                 zoom,
+                                                 zoom,
+                                                 0,
+                                                 w / 2,
+                                                 h / 2);
     }
 
     char *text = calloc(sizeof(char), 1);
@@ -220,9 +223,11 @@ void draw_list_row(appinfo *curr, int row) {
     int text_top_margin = (LIST_HEIGHT - text_height) / 2;
 
     vita2d_pgf_draw_text(font,
-                         LIST_TEXT_LEFT,// + text_left_margin,
+                         LIST_TEXT_LEFT, // + text_left_margin,
                          LIST_TOP(row) + text_top_margin + text_height,
-                         WHITE, 1.0, text);
+                         WHITE,
+                         1.0,
+                         text);
     free(text);
 }
 
@@ -233,21 +238,30 @@ void draw_list(appinfo *curr) {
     // |__|___________|
     // |__|___________|
     // ------helps-----
-    vita2d_draw_rectangle(ITEMS_PANEL_LEFT, ITEMS_PANEL_TOP,
-                          ITEMS_PANEL_WIDTH, ITEMS_PANEL_HEIGHT, BLACK);
+    vita2d_draw_rectangle(ITEMS_PANEL_LEFT,
+                          ITEMS_PANEL_TOP,
+                          ITEMS_PANEL_WIDTH,
+                          ITEMS_PANEL_HEIGHT,
+                          BLACK);
 
     for (int i = 0; curr && i < LIST_ROW; i++, curr = curr->next) {
         draw_list_row(curr, i);
     }
 }
 
-void draw_button(int left, int top, int width, int height, const char *text, float zoom,
+void draw_button(int left,
+                 int top,
+                 int width,
+                 int height,
+                 const char *text,
+                 float zoom,
                  int pressed) {
     // TODO render more looking button
     int text_color;
     if (pressed) {
         vita2d_draw_rectangle(left, top, width, height, BLACK);
-        vita2d_draw_rectangle(left + 4, top + 4, width - 5, height - 5, LIGHT_GRAY);
+        vita2d_draw_rectangle(
+            left + 4, top + 4, width - 5, height - 5, LIGHT_GRAY);
         text_color = WHITE;
     } else {
         vita2d_draw_rectangle(left, top, width, height, BLACK);
@@ -262,7 +276,9 @@ void draw_button(int left, int top, int width, int height, const char *text, flo
     vita2d_pgf_draw_text(font,
                          left + text_left_margin,
                          top + text_top_margin + text_height,
-                         text_color, zoom, text);
+                         text_color,
+                         zoom,
+                         text);
 }
 
 struct config_item {
@@ -272,9 +288,9 @@ struct config_item {
 
 void draw_config() {
     struct config_item items[] = {
-        {"Base",            config.base},
-        {"Slot Format",     config.slot_format},
-        {"View Mode",       config.list_mode},
+        {"Base", config.base},
+        {"Slot Format", config.slot_format},
+        {"View Mode", config.list_mode},
         {"Use button only", config.use_dpad ? "true" : "false"},
     };
     // FIXME: ugly UI
@@ -282,7 +298,8 @@ void draw_config() {
     for (int i = 0; i < sizeof(items) / sizeof(struct config_item); i++) {
         int color = i == select_config ? GREEN : WHITE;
         vita2d_pgf_draw_text(font, 10, i * 30 + 30, color, 1.0, items[i].name);
-        vita2d_pgf_draw_text(font, 200, i * 30 + 30, color, 1.0, items[i].value);
+        vita2d_pgf_draw_text(
+            font, 200, i * 30 + 30, color, 1.0, items[i].value);
     }
 }
 
@@ -297,14 +314,15 @@ void draw_appinfo_icon(icon_data *icon) {
     float z1 = APPINFO_ICON_HEIGHT / h;
     float zoom = z0 < z1 ? z0 : z1;
 
-    vita2d_draw_texture_scale_rotate_hotspot(icon->texture,
+    vita2d_draw_texture_scale_rotate_hotspot(
+        icon->texture,
         APPINFO_ICON_LEFT + (APPINFO_ICON_WIDTH / 2),
         APPINFO_ICON_TOP + (APPINFO_ICON_HEIGHT / 2),
-        zoom, zoom,
+        zoom,
+        zoom,
         0,
         w / 2,
-        h / 2
-    );
+        h / 2);
 }
 
 void draw_appinfo(ScreenState state, appinfo *info) {
@@ -327,59 +345,85 @@ void draw_appinfo(ScreenState state, appinfo *info) {
     // | save position    |
     // | ...              |
     // '---------------------------------------
-    vita2d_draw_rectangle(APPINFO_PANEL_LEFT, APPINFO_PANEL_TOP,
-                          APPINFO_PANEL_WIDTH, APPINFO_PANEL_HEIGHT, WHITE);
+    vita2d_draw_rectangle(APPINFO_PANEL_LEFT,
+                          APPINFO_PANEL_TOP,
+                          APPINFO_PANEL_WIDTH,
+                          APPINFO_PANEL_HEIGHT,
+                          WHITE);
 
     draw_appinfo_icon(&info->icon);
 
-    draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(0),
-                APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
-                "BACKUP", 1.0,
+    draw_button(APPINFO_BUTTON_LEFT,
+                APPINFO_BUTTON_TOP(0),
+                APPINFO_BUTTON_WIDTH,
+                APPINFO_BUTTON_HEIGHT,
+                "BACKUP",
+                1.0,
                 (state >= BACKUP_MODE && state <= BACKUP_FAIL));
 
-    draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(1),
-                APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
-                "RESTORE", 1.0,
+    draw_button(APPINFO_BUTTON_LEFT,
+                APPINFO_BUTTON_TOP(1),
+                APPINFO_BUTTON_WIDTH,
+                APPINFO_BUTTON_HEIGHT,
+                "RESTORE",
+                1.0,
                 (state >= RESTORE_MODE && state <= RESTORE_FAIL));
 
-    draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(2),
-                APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
-                "DELETE", 1.0,
+    draw_button(APPINFO_BUTTON_LEFT,
+                APPINFO_BUTTON_TOP(2),
+                APPINFO_BUTTON_WIDTH,
+                APPINFO_BUTTON_HEIGHT,
+                "DELETE",
+                1.0,
                 (state >= DELETE_MODE && state <= DELETE_FAIL));
 
-    draw_button(APPINFO_BUTTON_LEFT, APPINFO_BUTTON_TOP(3),
-                APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
-                "FORMAT", 1.0,
-                (state >= FORMAT_MODE && state <=FORMAT_FAIL));
+    draw_button(APPINFO_BUTTON_LEFT,
+                APPINFO_BUTTON_TOP(3),
+                APPINFO_BUTTON_WIDTH,
+                APPINFO_BUTTON_HEIGHT,
+                "FORMAT",
+                1.0,
+                (state >= FORMAT_MODE && state <= FORMAT_FAIL));
 
     if (config.use_dpad && state == PRINT_APPINFO) {
         vita2d_draw_rectangle(APPINFO_BUTTON_LEFT,
                               APPINFO_BUTTON_TOP(select_appinfo_button),
-                              APPINFO_BUTTON_WIDTH, APPINFO_BUTTON_HEIGHT,
+                              APPINFO_BUTTON_WIDTH,
+                              APPINFO_BUTTON_HEIGHT,
                               LIGHT_GRAY);
     }
 
-    vita2d_draw_rectangle(APPINFO_DESC_LEFT, APPINFO_DESC_TOP,
-                          APPINFO_DESC_WIDTH, APPINFO_DESC_HEIGHT,
+    vita2d_draw_rectangle(APPINFO_DESC_LEFT,
+                          APPINFO_DESC_TOP,
+                          APPINFO_DESC_WIDTH,
+                          APPINFO_DESC_HEIGHT,
                           LIGHT_SLATE_GRAY);
 
     vita2d_pgf_draw_text(font,
                          APPINFO_DESC_LEFT + APPINFO_DESC_PADDING,
                          APPINFO_DESC_TOP + APPINFO_DESC_PADDING + 20,
-                         BLACK, 1.0, info->title);
+                         BLACK,
+                         1.0,
+                         info->title);
     vita2d_pgf_draw_text(font,
                          APPINFO_DESC_LEFT + APPINFO_DESC_PADDING,
                          APPINFO_DESC_TOP + APPINFO_DESC_PADDING + 40,
-                         BLACK, 1.0, info->title_id);
+                         BLACK,
+                         1.0,
+                         info->title_id);
 
     char *savedir = save_dir_path(info);
     char *buf = calloc(sizeof(char), 1);
-    aprintf(&buf, "save dir: %s", savedir ? savedir : "need to start game before action");
+    aprintf(&buf,
+            "save dir: %s",
+            savedir ? savedir : "need to start game before action");
 
     vita2d_pgf_draw_text(font,
                          APPINFO_DESC_LEFT + APPINFO_DESC_PADDING,
                          APPINFO_DESC_TOP + APPINFO_DESC_PADDING + 80,
-                         BLACK, 1.0, buf);
+                         BLACK,
+                         1.0,
+                         buf);
     if (savedir) {
         free(savedir);
     }
@@ -404,8 +448,14 @@ char *load_slot_string(const appinfo *info, int slot) {
     sceRtcSetTick(&time, &tick_local);
 
     ret = calloc(sizeof(char), 1);
-    aprintf(&ret, "%04d-%02d-%02d %02d:%02d:%02d",
-             time.year, time.month, time.day, time.hour, time.minute, time.second);
+    aprintf(&ret,
+            "%04d-%02d-%02d %02d:%02d:%02d",
+            time.year,
+            time.month,
+            time.day,
+            time.hour,
+            time.minute,
+            time.second);
 
 exit:
     free(fn);
@@ -432,20 +482,28 @@ void draw_slots(appinfo *info, int slot) {
     // | save position    |
     // | ...              | slot9
     // '---------------------------------------
-    vita2d_draw_rectangle(SLOT_PANEL_LEFT, SLOT_PANEL_TOP,
-                          SLOT_PANEL_WIDTH, SLOT_PANEL_HEIGHT, WHITE);
+    vita2d_draw_rectangle(SLOT_PANEL_LEFT,
+                          SLOT_PANEL_TOP,
+                          SLOT_PANEL_WIDTH,
+                          SLOT_PANEL_HEIGHT,
+                          WHITE);
 
     for (int i = 0; i < SLOT_BUTTON; i++) {
         char *slot_string = load_slot_string(info, i);
 
-        draw_button(SLOT_BUTTON_LEFT, SLOT_BUTTON_TOP(i),
-                    SLOT_BUTTON_WIDTH, SLOT_BUTTON_HEIGHT,
-                    slot_string ? slot_string : "empty", 1.0,
+        draw_button(SLOT_BUTTON_LEFT,
+                    SLOT_BUTTON_TOP(i),
+                    SLOT_BUTTON_WIDTH,
+                    SLOT_BUTTON_HEIGHT,
+                    slot_string ? slot_string : "empty",
+                    1.0,
                     (slot == i));
 
         if (slot < 0 && config.use_dpad && select_slot == i) {
-            vita2d_draw_rectangle(SLOT_BUTTON_LEFT, SLOT_BUTTON_TOP(i),
-                                  SLOT_BUTTON_WIDTH, SLOT_BUTTON_HEIGHT,
+            vita2d_draw_rectangle(SLOT_BUTTON_LEFT,
+                                  SLOT_BUTTON_TOP(i),
+                                  SLOT_BUTTON_WIDTH,
+                                  SLOT_BUTTON_HEIGHT,
                                   LIGHT_GRAY);
         }
 
@@ -456,7 +514,7 @@ void draw_slots(appinfo *info, int slot) {
 }
 
 // TODO support multi line
-char* error_message(ProcessError error) {
+char *error_message(ProcessError error) {
     switch (error) {
         case NO_ERROR:
             return "NO ERROR";
@@ -476,10 +534,13 @@ char* error_message(ProcessError error) {
 }
 
 #define IN_RANGE(start, end, value) (start < value && value < end)
-#define IS_TOUCHED(rect, pt) \
-    (IN_RANGE(rect.left, rect.right, pt.x) && IN_RANGE(rect.top, rect.bottom, pt.y))
+#define IS_TOUCHED(rect, pt)                  \
+    (IN_RANGE(rect.left, rect.right, pt.x) && \
+     IN_RANGE(rect.top, rect.bottom, pt.y))
 
-ScreenState on_mainscreen_event_with_touch(int steps, int *step, appinfo **curr,
+ScreenState on_mainscreen_event_with_touch(int steps,
+                                           int *step,
+                                           appinfo **curr,
                                            appinfo **touched) {
     // FIXME: cleanup
     int move_row = 0;
@@ -552,11 +613,13 @@ int selectable_count(appinfo *curr, int row, int col) {
     return selectable_count;
 }
 
-#define IS_OVERFLOW() ( \
-        select_row * max_col + select_col >= \
-        selectable_count(*curr, max_row, max_col) \
-    )
-ScreenState on_mainscreen_event_with_dpad(int steps, int *step, appinfo **curr,
+#define IS_OVERFLOW()                     \
+    (select_row * max_col + select_col >= \
+     selectable_count(*curr, max_row, max_col))
+
+ScreenState on_mainscreen_event_with_dpad(int steps,
+                                          int *step,
+                                          appinfo **curr,
                                           appinfo **touched) {
     int moves;
     int max_row;
@@ -633,7 +696,8 @@ ScreenState on_mainscreen_event_with_dpad(int steps, int *step, appinfo **curr,
     if (!(btn & SCE_CTRL_HOLD) && btn & SCE_CTRL_ENTER) {
         appinfo *tmp = *curr;
         for (int i = 0; tmp && i < (select_row * max_col) + select_col;
-                i++, tmp = tmp->next);
+             i++, tmp = tmp->next)
+            ;
         *touched = tmp;
         select_appinfo_button = 0;
         return PRINT_APPINFO;
@@ -643,8 +707,8 @@ ScreenState on_mainscreen_event_with_dpad(int steps, int *step, appinfo **curr,
 }
 #undef IS_OVERFLOW
 
-ScreenState on_mainscreen_event(int steps, int *step, appinfo **curr,
-                                appinfo **touched) {
+ScreenState
+on_mainscreen_event(int steps, int *step, appinfo **curr, appinfo **touched) {
     if (config.use_dpad) {
         return on_mainscreen_event_with_dpad(steps, step, curr, touched);
     }
@@ -714,6 +778,7 @@ ScreenState on_config_event() {
     return UNKNOWN;
 }
 
+// clang-format off
 #define APPINFO_BUTTON_AREA(n) \
     { \
         .left = APPINFO_BUTTON_LEFT, \
@@ -721,6 +786,7 @@ ScreenState on_config_event() {
         .right = APPINFO_BUTTON_LEFT + APPINFO_BUTTON_WIDTH, \
         .bottom = APPINFO_BUTTON_TOP(n) + APPINFO_BUTTON_HEIGHT, \
     }
+// clang-format on
 
 ScreenState on_appinfo_button_event(point p) {
     static rectangle backup_button_area = APPINFO_BUTTON_AREA(0);
@@ -969,7 +1035,7 @@ int copy_slot_to_savedata(appinfo *info, int slot) {
 
     char *sfo_path = calloc(sizeof(char), 1);
     aprintf(&sfo_path, "%s/sce_sys/param.sfo", dest);
-    printf("sfo_path %s\n",  sfo_path);
+    printf("sfo_path %s\n", sfo_path);
     if (exists(sfo_path)) {
         change_accountid(sfo_path, get_accountid());
     }
@@ -1043,11 +1109,12 @@ void draw_screen(ScreenState state, appinfo *curr, appinfo *choose, int slot) {
         vita2d_clear_screen();
 
         if (state >= MAIN_SCREEN) {
-            //vita2d_draw_rectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, BLACK);
-            //vita2d_draw_line(0, HEADER_HEIGHT, SCREEN_WIDTH, HEADER_HEIGHT, WHITE);
-            //draw header
+            // vita2d_draw_rectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, BLACK);
+            // vita2d_draw_line(0, HEADER_HEIGHT, SCREEN_WIDTH, HEADER_HEIGHT,
+            //                  WHITE);
+            // draw header
 
-            //draw footer
+            // draw footer
             switch (mainscreen_list_mode) {
                 case USE_ICON:
                     draw_icons(curr);
@@ -1099,13 +1166,14 @@ void draw_screen(ScreenState state, appinfo *curr, appinfo *choose, int slot) {
     }
 }
 
-ScreenState noslot_state_machine(appinfo *curr, appinfo *choose,
+ScreenState noslot_state_machine(appinfo *curr,
+                                 appinfo *choose,
                                  ScreenState confirm_state,
                                  ScreenState progress_state,
                                  ScreenState fail_state,
                                  ScreenState exit_state,
                                  const char *confirm_msg,
-                                 int (*progress_func)(appinfo*)) {
+                                 int (*progress_func)(appinfo *)) {
     // this hook will skip choice slot state
     ScreenState state = confirm_state;
     int last_error = NO_ERROR;
@@ -1113,9 +1181,8 @@ ScreenState noslot_state_machine(appinfo *curr, appinfo *choose,
         draw_screen(state, curr, choose, -1);
         ScreenState new_state = UNKNOWN;
         if (state == confirm_state) {
-            new_state = confirm(confirm_msg, 1.0) == CONFIRM
-                      ? progress_state
-                      : exit_state;
+            new_state = confirm(confirm_msg, 1.0) == CONFIRM ? progress_state
+                                                             : exit_state;
         } else if (state == progress_state) {
             last_error = progress_func(choose);
             new_state = last_error != NO_ERROR ? fail_state : exit_state;
@@ -1131,13 +1198,14 @@ ScreenState noslot_state_machine(appinfo *curr, appinfo *choose,
     }
 }
 
-ScreenState slot_state_machine(appinfo *curr, appinfo *choose,
+ScreenState slot_state_machine(appinfo *curr,
+                               appinfo *choose,
                                ScreenState start_state,
                                ScreenState confirm_state,
                                ScreenState progress_state,
                                ScreenState fail_state,
                                const char *confirm_msg,
-                               int (*progress_func)(appinfo*, int)) {
+                               int (*progress_func)(appinfo *, int)) {
     int slot = -1;
     ScreenState state = start_state;
     int last_error = NO_ERROR;
@@ -1152,9 +1220,8 @@ ScreenState slot_state_machine(appinfo *curr, appinfo *choose,
         } else if (state == confirm_state) {
             char *tmp = calloc(sizeof(char), 1);
             aprintf(&tmp, confirm_msg, slot);
-            new_state = confirm(tmp, 1.0) == CONFIRM
-                      ? progress_state
-                      : start_state;
+            new_state =
+                confirm(tmp, 1.0) == CONFIRM ? progress_state : start_state;
             free(tmp);
         } else if (state == progress_state) {
             last_error = progress_func(choose, slot);
@@ -1188,7 +1255,8 @@ int mainloop() {
             break;
         case USE_ICON:
         default:
-            rows = (list.count / ICONS_COL) + ((list.count % ICONS_COL) ? 1 : 0);
+            rows =
+                (list.count / ICONS_COL) + ((list.count % ICONS_COL) ? 1 : 0);
             steps = rows - ICONS_ROW;
             break;
     }
@@ -1217,7 +1285,8 @@ int mainloop() {
         while (1) {
             switch (state) {
                 case MAIN_SCREEN:
-                    new_state = on_mainscreen_event(steps, &step, &curr, &choose);
+                    new_state =
+                        on_mainscreen_event(steps, &step, &curr, &choose);
                     break;
                 case CONFIG_SCREEN:
                     new_state = on_config_event();
@@ -1226,28 +1295,39 @@ int mainloop() {
                     new_state = on_appinfo_event();
                     break;
                 case BACKUP_MODE:
-                    new_state = slot_state_machine(curr, choose,
-                                                   BACKUP_MODE, BACKUP_CONFIRM,
-                                                   BACKUP_PROGRESS, BACKUP_FAIL,
+                    new_state = slot_state_machine(curr,
+                                                   choose,
+                                                   BACKUP_MODE,
+                                                   BACKUP_CONFIRM,
+                                                   BACKUP_PROGRESS,
+                                                   BACKUP_FAIL,
                                                    "Backup savedata to slot %d",
                                                    copy_savedata_to_slot);
                     break;
                 case RESTORE_MODE:
-                    new_state = slot_state_machine(curr, choose,
-                                                   RESTORE_MODE, RESTORE_CONFIRM,
-                                                   RESTORE_PROGRESS, RESTORE_FAIL,
-                                                   "Restore savedata from slot %d",
-                                                   copy_slot_to_savedata);
+                    new_state =
+                        slot_state_machine(curr,
+                                           choose,
+                                           RESTORE_MODE,
+                                           RESTORE_CONFIRM,
+                                           RESTORE_PROGRESS,
+                                           RESTORE_FAIL,
+                                           "Restore savedata from slot %d",
+                                           copy_slot_to_savedata);
                     break;
                 case DELETE_MODE:
-                    new_state = slot_state_machine(curr, choose,
-                                                   DELETE_MODE, DELETE_CONFIRM,
-                                                   DELETE_PROGRESS, DELETE_FAIL,
+                    new_state = slot_state_machine(curr,
+                                                   choose,
+                                                   DELETE_MODE,
+                                                   DELETE_CONFIRM,
+                                                   DELETE_PROGRESS,
+                                                   DELETE_FAIL,
                                                    "Delete save slot %d",
                                                    delete_slot);
                     break;
                 case FORMAT_MODE:
-                    new_state = noslot_state_machine(curr, choose,
+                    new_state = noslot_state_machine(curr,
+                                                     choose,
                                                      FORMAT_CONFIRM,
                                                      FORMAT_PROGRESS,
                                                      FORMAT_FAIL,
@@ -1280,20 +1360,21 @@ int main() {
 
     font = load_system_fonts();
 
-    kernel_modid = taiLoadStartKernelModule(MODULE_PATH "/kernel.skprx",
-                                            0, NULL, 0);
+    kernel_modid =
+        taiLoadStartKernelModule(MODULE_PATH "/kernel.skprx", 0, NULL, 0);
+
     // if before start VitaShell or this application,
     // will remain garbage in the kernel, taiLoadStartKernelModule will return
     // always 0x8002D013
     // also travis cppcheck is too old version, cannot check properly
     if (kernel_modid < 0) {
-        if (kernel_modid != 0x8002D013)  {
+        if (kernel_modid != 0x8002D013) {
             printf("cannot find kernel module %x\n", kernel_modid);
             goto error_module_load;
         }
     }
-    user_modid = sceKernelLoadStartModule(MODULE_PATH "/user.suprx",
-                                          0, NULL, 0, NULL, NULL);
+    user_modid = sceKernelLoadStartModule(
+        MODULE_PATH "/user.suprx", 0, NULL, 0, NULL, NULL);
     if (user_modid < 0) {
         printf("cannot find user module %x\n", user_modid);
         goto error_module_load;
@@ -1319,7 +1400,8 @@ int main() {
     init_console();
     // TODO splash
 
-    while (mainloop() >= 0);
+    while (mainloop() >= 0)
+        ;
 
     sceKernelExitProcess(0);
     return 0;
@@ -1328,8 +1410,7 @@ error_module_load:
     for (int i = 0; i < 3; i++) {
         vita2d_start_drawing();
         vita2d_clear_screen();
-        vita2d_pgf_draw_text(font, 0, 40,
-                             RED, 2.0, "not found module files");
+        vita2d_pgf_draw_text(font, 0, 40, RED, 2.0, "not found module files");
 
         vita2d_end_drawing();
         vita2d_wait_rendering_done();

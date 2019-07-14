@@ -1,8 +1,11 @@
 // This was only tested with sqlite 3.6.23.1
-// Please note that this .c file does not implement thread safety for sqlite, and as such requires it to be built with -DSQLITE_THREADSAFE=0 as well
-// Build flags for sqlite: -DSQLITE_OS_OTHER=1 -DSQLITE_TEMP_STORE=3 -DSQLITE_THREADSAFE=0
+// Please note that this .c file does not implement thread safety for sqlite,
+// and as such requires it to be built with -DSQLITE_THREADSAFE=0 as well
+// Build flags for sqlite:
+// -DSQLITE_OS_OTHER=1 -DSQLITE_TEMP_STORE=3 -DSQLITE_THREADSAFE=0
 
-// It's also hacky -- no sync support, no tempdir support, access returning bs, etc... don't use in production!
+// It's also hacky -- no sync support, no tempdir support, access returning bs,
+// etc... don't use in production!
 
 // based on test_demovfs.c
 
@@ -10,6 +13,7 @@
 
 #include <stdio.h>
 #include <string.h>
+
 #include <psp2/io/fcntl.h>
 #include <psp2/io/stat.h>
 #include <psp2/kernel/threadmgr.h>
@@ -29,14 +33,15 @@ typedef struct VitaFile {
 
 // File ops
 static int vita_xClose(sqlite3_file *pFile) {
-    VitaFile *p = (VitaFile*)pFile;
+    VitaFile *p = (VitaFile *)pFile;
     sceIoClose(p->fd);
     LOG("close %x\n", p->fd);
     return SQLITE_OK;
 }
 
-static int vita_xRead(sqlite3_file *pFile, void *zBuf, int iAmt, sqlite_int64 iOfst) {
-    VitaFile *p = (VitaFile*)pFile;
+static int
+vita_xRead(sqlite3_file *pFile, void *zBuf, int iAmt, sqlite_int64 iOfst) {
+    VitaFile *p = (VitaFile *)pFile;
     memset(zBuf, 0, iAmt);
     sceIoLseek(p->fd, iOfst, SCE_SEEK_SET);
     int read = sceIoRead(p->fd, zBuf, iAmt);
@@ -48,8 +53,11 @@ static int vita_xRead(sqlite3_file *pFile, void *zBuf, int iAmt, sqlite_int64 iO
     return SQLITE_IOERR_READ;
 }
 
-static int vita_xWrite(sqlite3_file *pFile, const void *zBuf, int iAmt, sqlite_int64 iOfst) {
-    VitaFile *p = (VitaFile*)pFile;
+static int vita_xWrite(sqlite3_file *pFile,
+                       const void *zBuf,
+                       int iAmt,
+                       sqlite_int64 iOfst) {
+    VitaFile *p = (VitaFile *)pFile;
     int ofst = sceIoLseek(p->fd, iOfst, SCE_SEEK_SET);
     LOG("seek %x %x => %x\n", p->fd, iOfst, ofst);
     if (ofst != iOfst)
@@ -71,7 +79,7 @@ static int vita_xSync(sqlite3_file *pFile, int flags) {
 }
 
 static int vita_xFileSize(sqlite3_file *pFile, sqlite_int64 *pSize) {
-    VitaFile *p = (VitaFile*)pFile;
+    VitaFile *p = (VitaFile *)pFile;
     SceIoStat stat = {0};
     sceIoGetstatByFd(p->fd, &stat);
     LOG("filesize %x => %x\n", p->fd, stat.st_size);
@@ -105,7 +113,11 @@ static int vita_xDeviceCharacteristics(sqlite3_file *pFile) {
 }
 
 // VFS ops
-static int vita_xOpen(sqlite3_vfs *vfs, const char *name, sqlite3_file *file, int flags, int *outFlags) {
+static int vita_xOpen(sqlite3_vfs *vfs,
+                      const char *name,
+                      sqlite3_file *file,
+                      int flags,
+                      int *outFlags) {
     static const sqlite3_io_methods vitaio = {
         1,
         vita_xClose,
@@ -122,7 +134,7 @@ static int vita_xOpen(sqlite3_vfs *vfs, const char *name, sqlite3_file *file, in
         vita_xDeviceCharacteristics,
     };
 
-    VitaFile *p = (VitaFile*)file;
+    VitaFile *p = (VitaFile *)file;
     unsigned oflags = 0;
     if (flags & SQLITE_OPEN_EXCLUSIVE)
         oflags |= SCE_O_EXCL;
@@ -132,7 +144,8 @@ static int vita_xOpen(sqlite3_vfs *vfs, const char *name, sqlite3_file *file, in
         oflags |= SCE_O_RDONLY;
     if (flags & SQLITE_OPEN_READWRITE)
         oflags |= SCE_O_RDWR;
-    // TODO(xyz): sqlite tries to open inexistant journal and then tries to read from it, wtf?
+    // TODO(xyz): sqlite tries to open inexistant journal and then tries to
+    // read from it, wtf?
     // so force O_CREAT here
     if (flags & SQLITE_OPEN_MAIN_JOURNAL && !(flags & SQLITE_OPEN_EXCLUSIVE))
         oflags |= SCE_O_CREAT;
@@ -162,23 +175,26 @@ int vita_xAccess(sqlite3_vfs *vfs, const char *name, int flags, int *pResOut) {
     return SQLITE_OK;
 }
 
-int vita_xFullPathname(sqlite3_vfs *vfs, const char *zName, int nOut, char *zOut) {
+int vita_xFullPathname(sqlite3_vfs *vfs,
+                       const char *zName,
+                       int nOut,
+                       char *zOut) {
     snprintf(zOut, nOut, "%s", zName);
     return 0;
 }
 
-void* vita_xDlOpen(sqlite3_vfs *vfs, const char *zFilename) {
+void *vita_xDlOpen(sqlite3_vfs *vfs, const char *zFilename) {
     return NULL;
 }
 
 void vita_xDlError(sqlite3_vfs *vfs, int nByte, char *zErrMsg) {
 }
 
-void (*vita_xDlSym(sqlite3_vfs *vfs,void*p, const char *zSymbol))(void) {
+void (*vita_xDlSym(sqlite3_vfs *vfs, void *p, const char *zSymbol))(void) {
     return NULL;
 }
 
-void vita_xDlClose(sqlite3_vfs *vfs, void*p) {
+void vita_xDlClose(sqlite3_vfs *vfs, void *p) {
 }
 
 int vita_xRandomness(sqlite3_vfs *vfs, int nByte, char *zOut) {
@@ -195,7 +211,7 @@ int vita_xCurrentTime(sqlite3_vfs *vfs, double *pTime) {
     SceDateTime time = {0};
     sceRtcGetCurrentClock(&time, 0);
     sceRtcGetTime_t(&time, &t);
-    *pTime = t/86400.0 + 2440587.5;
+    *pTime = t / 86400.0 + 2440587.5;
     return SQLITE_OK;
 }
 

@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <vita2d.h>
+
 #include "common.h"
 
 typedef struct appinfo {

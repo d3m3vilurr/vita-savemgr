@@ -1,16 +1,18 @@
 #include <string.h>
-#include <psp2/ctrl.h>
-#include <psp2/touch.h>
-#include <psp2/shellutil.h>
+
 #include <psp2/apputil.h>
+#include <psp2/ctrl.h>
+#include <psp2/shellutil.h>
 #include <psp2/system_param.h>
+#include <psp2/touch.h>
 
 #include "common.h"
 #include "input.h"
 
 void init_input() {
     sceCtrlSetSamplingMode(SCE_CTRL_MODE_ANALOG_WIDE);
-    sceTouchSetSamplingState(SCE_TOUCH_PORT_FRONT, SCE_TOUCH_SAMPLING_STATE_START);
+    sceTouchSetSamplingState(SCE_TOUCH_PORT_FRONT,
+                             SCE_TOUCH_SAMPLING_STATE_START);
 
     int enter_button;
 
@@ -18,7 +20,8 @@ void init_input() {
     SceAppUtilBootParam boot_param = {0};
     sceAppUtilInit(&init_param, &boot_param);
 
-    sceAppUtilSystemParamGetInt(SCE_SYSTEM_PARAM_ID_ENTER_BUTTON, &enter_button);
+    sceAppUtilSystemParamGetInt(SCE_SYSTEM_PARAM_ID_ENTER_BUTTON,
+                                &enter_button);
 
     if (enter_button == SCE_SYSTEM_PARAM_ENTER_BUTTON_CIRCLE) {
         SCE_CTRL_ENTER = SCE_CTRL_CIRCLE;

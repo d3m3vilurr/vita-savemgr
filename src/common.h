@@ -3,7 +3,8 @@
 
 #include <vita2d.h>
 
-#define SAVE_MANAGER    "SAVEMGR00"
+// clang-format off
+#define SAVE_MANAGER  "SAVEMGR00"
 
 #define ICON_CIRCLE   "\xe2\x97\x8b"
 #define ICON_CROSS    "\xe2\x95\xb3"
@@ -125,13 +126,14 @@
 #define DEFAULT_LIST_MODE             "icon"
 
 #define SCE_CTRL_HOLD 0x80000000
+// clang-format on
 
 extern int SCE_CTRL_ENTER;
 extern int SCE_CTRL_CANCEL;
 extern char ICON_ENTER[4];
 extern char ICON_CANCEL[4];
 
-extern vita2d_pgf* font;
+extern vita2d_pgf *font;
 extern char *confirm_msg;
 extern int confirm_msg_width;
 extern char *close_msg;

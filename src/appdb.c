@@ -2,20 +2,21 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "sqlite3.h"
 #include "appdb.h"
 #include "file.h"
+#include "sqlite3.h"
 
 #define APP_DB "ur0:/shell/db/app.db"
 
-static int get_applist_callback(void *data, int argc, char **argv, char **cols) {
-    applist *list = (applist*)data;
+static int
+get_applist_callback(void *data, int argc, char **argv, char **cols) {
+    applist *list = (applist *)data;
     appinfo *info = calloc(1, sizeof(appinfo));
     if (list->count == 0) {
         list->items = info;
     } else {
         appinfo *tmp = list->items;
-        while(tmp->next != NULL) {
+        while (tmp->next != NULL) {
             tmp = tmp->next;
         }
         tmp->next = info;

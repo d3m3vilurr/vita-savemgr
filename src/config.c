@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <psp2/io/fcntl.h>
 #include <psp2/appmgr.h>
+#include <psp2/io/fcntl.h>
 
 #include "common.h"
 #include "config.h"
@@ -16,16 +16,15 @@ char app_title[256];
 
 configure config = {0};
 
-static int handler(void* out,
-                   const char* section, const char* name, const char* value) {
-    configure *p = (configure*)out;
+static int
+handler(void *out, const char *section, const char *name, const char *value) {
+    configure *p = (configure *)out;
 
     if (strcmp(name, "base") == 0) {
         p->base = strdup(value);
 
-        if (strncmp("ux0:", value, 4) == 0 ||
-                strncmp("ur0:", value, 4) == 0||
-                strncmp("uma0:", value, 4) == 0) {
+        if (strncmp("ux0:", value, 4) == 0 || strncmp("ur0:", value, 4) == 0 ||
+            strncmp("uma0:", value, 4) == 0) {
             p->base = strdup(value);
         } else {
             char *base_path = calloc(sizeof(char), 1);
@@ -44,8 +43,8 @@ static int handler(void* out,
 }
 
 void load_config() {
-    sceAppMgrAppParamGetString(0, 9, app_title , 256);
-    sceAppMgrAppParamGetString(0, 12, app_titleid , 16);
+    sceAppMgrAppParamGetString(0, 9, app_title, 256);
+    sceAppMgrAppParamGetString(0, 12, app_titleid, 16);
 
     ini_parse(CONFIG_FILE, handler, &config);
 
@@ -65,6 +64,6 @@ void save_config() {
     fprintf(f, "%s = %s\n", "base", config.base);
     fprintf(f, "%s = %s\n", "slot_format", config.slot_format);
     fprintf(f, "%s = %s\n", "list_mode", config.list_mode);
-    fprintf(f, "%s = %s\n", "use_dpad", config.use_dpad ? "true": "false");
+    fprintf(f, "%s = %s\n", "use_dpad", config.use_dpad ? "true" : "false");
     fclose(f);
 }

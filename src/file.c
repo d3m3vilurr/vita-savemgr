@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <psp2/io/stat.h>
-#include <psp2/io/fcntl.h>
+
 #include <psp2/io/dirent.h>
+#include <psp2/io/fcntl.h>
+#include <psp2/io/stat.h>
 
 #include "common.h"
 #include "file.h"
@@ -27,8 +28,7 @@ char *blacklists[] = {
 int exists(const char *path) {
     SceIoStat stat = {0};
     int ret = sceIoGetstat(path, &stat);
-    return ret != SCE_ERROR_ERRNO_ENOENT &&
-        ret != SCE_ERROR_ERRNO_ENODEV;
+    return ret != SCE_ERROR_ERRNO_ENOENT && ret != SCE_ERROR_ERRNO_ENODEV;
 }
 
 int is_dir(const char *path) {
@@ -54,7 +54,6 @@ int mkdir(const char *path, int mode) {
             if (strcmp(p, "ux0:/") == 0) {
                 p[i] = path[i];
                 continue;
-
             }
             if (!exists(p)) {
                 sceIoMkdir(p, mode);
@@ -74,8 +73,9 @@ int rmdir(const char *path, void (*callback)()) {
     SceUID dfd = sceIoDopen(path);
     if (dfd < 0) {
         int ret = sceIoRemove(path);
-        if (ret < 0)
+        if (ret < 0) {
             return ret;
+        }
     }
     int res = 0;
 
@@ -117,8 +117,9 @@ int rmdir(const char *path, void (*callback)()) {
     sceIoDclose(dfd);
 
     int ret = sceIoRmdir(path);
-    if (ret < 0)
+    if (ret < 0) {
         return ret;
+    }
 
     return 1;
 }
@@ -131,8 +132,8 @@ int copyfile(char *src, char *dest) {
 
     int i = 0;
     while (blacklists[i]) {
-        //if (strcasecmp(dest, blacklists[i]) == 0) {
-        if (strstr(dest, blacklists[i]))  {
+        // if (strcasecmp(dest, blacklists[i]) == 0) {
+        if (strstr(dest, blacklists[i])) {
             return 2;
         }
         i += 1;
@@ -141,8 +142,9 @@ int copyfile(char *src, char *dest) {
     int ignore_error = strncmp(dest, "savedata0:", 10) == 0;
 
     SceUID fdsrc = sceIoOpen(src, SCE_O_RDONLY, 0);
-    if (!ignore_error && fdsrc < 0)
+    if (!ignore_error && fdsrc < 0) {
         return fdsrc;
+    }
 
     int size = sceIoLseek(fdsrc, 0, SEEK_END);
     sceIoLseek(fdsrc, 0, SEEK_SET);
@@ -157,7 +159,6 @@ int copyfile(char *src, char *dest) {
     sceIoWrite(fddst, buf, size);
     sceIoClose(fddst);
 
-
     free(buf);
     return 1;
 }
@@ -166,13 +167,12 @@ int file_count(char *path, int check_blacklist) {
     if (check_blacklist) {
         int i = 0;
         while (blacklists[i]) {
-            if (strstr(path, blacklists[i]))  {
+            if (strstr(path, blacklists[i])) {
                 return 0;
             }
             i += 1;
         }
     }
-
 
     if (!exists(path)) {
         return 0;
@@ -215,8 +215,8 @@ int copydir(const char *src, const char *dest, void (*callback)()) {
 
     int i = 0;
     while (blacklists[i]) {
-        //if (strcasecmp(dest, blacklists[i]) == 0) {
-        if (strstr(dest, blacklists[i]))  {
+        // if (strcasecmp(dest, blacklists[i]) == 0) {
+        if (strstr(dest, blacklists[i])) {
             return 2;
         }
         i += 1;
@@ -273,4 +273,3 @@ int copydir(const char *src, const char *dest, void (*callback)()) {
     sceIoDclose(dfd);
     return 1;
 }
-
