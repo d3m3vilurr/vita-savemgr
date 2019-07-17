@@ -24,7 +24,7 @@ handler(void *out, const char *section, const char *name, const char *value) {
         p->base = strdup(value);
 
         if (strncmp("ux0:", value, 4) == 0 || strncmp("ur0:", value, 4) == 0 ||
-            strncmp("uma0:", value, 4) == 0) {
+            strncmp("uma0:", value, 5) == 0) {
             p->base = strdup(value);
         } else {
             char *base_path = calloc(sizeof(char), 1);
