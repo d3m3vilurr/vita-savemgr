@@ -1242,7 +1242,7 @@ int mainloop() {
     applist list = {0};
     int ret = get_applist(&list);
     if (ret < 0) {
-        // loading error
+        printf("applist loading error: %d\n", ret);
         return -1;
     }
 
