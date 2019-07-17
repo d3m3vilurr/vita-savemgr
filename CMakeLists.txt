@@ -50,7 +50,7 @@ add_custom_target(vitashell_user_lib ALL DEPENDS ${CMAKE_SOURCE_DIR}/extern/vita
 add_custom_target(vitashell_user_module ALL DEPENDS vitashell_user_lib)
 
 include_directories(
-    sqlite3
+    extern/sqlite3
     extern/inih
     extern/vitashell/modules/kernel
     extern/vitashell/modules/user
@@ -68,7 +68,7 @@ add_executable(${PROJECT_NAME}.elf
     src/system.c
     src/vita_sqlite.c
 
-    sqlite3/sqlite3.c
+    extern/sqlite3/sqlite3.c
     extern/inih/ini.c
 )
 
