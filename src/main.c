@@ -758,11 +758,11 @@ ScreenState on_config_event() {
                 // TODO text dialog
                 break;
             case 2:
-                if (strncmp(config.list_mode, "icon", 4) == 0) {
-                    strncpy(config.list_mode, "list", 4);
+                if (strncmp(config.list_mode, "icon", 5) == 0) {
+                    strncpy(config.list_mode, "list", 5);
                     mainscreen_list_mode = USE_LIST;
                 } else {
-                    strncpy(config.list_mode, "icon", 4);
+                    strncpy(config.list_mode, "icon", 5);
                     mainscreen_list_mode = USE_ICON;
                 }
                 need_refresh = 1;
