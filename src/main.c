@@ -689,7 +689,7 @@ ScreenState on_mainscreen_event_with_dpad(int steps,
         return MAIN_SCREEN;
     }
 
-    if (!(btn & SCE_CTRL_HOLD) && btn & SCE_CTRL_RTRIGGER) {
+    if (!(btn & SCE_CTRL_HOLD) && btn & SCE_CTRL_SELECT) {
         return CONFIG_SCREEN;
     }
 
