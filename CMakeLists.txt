@@ -83,7 +83,7 @@ target_link_libraries(${PROJECT_NAME}.elf
     -lSceCommonDialog_stub
     -lSceDisplay_stub
     -lSceGxm_stub
-    -lSceDriverUser_stub
+    -lSceAppMgr_stub
     -lSceAppUtil_stub
     -lSceSysmodule_stub
     -lSceCtrl_stub
