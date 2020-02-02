@@ -3,7 +3,14 @@ dist: xenial
 
 addons:
     apt:
+        sources:
+            - sourceline: ppa:ubuntu-toolchain-r/test
+            - sourceline: ppa:savoury1/backports
+            - sourceline: ppa:savoury1/apt-xenial
+            - sourceline: ppa:savoury1/build-tools
+        update: true
         packages:
+            - cmake
             - cppcheck
             - patch
             - ninja-build
