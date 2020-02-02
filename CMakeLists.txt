@@ -1,12 +1,24 @@
 cmake_minimum_required(VERSION 2.8)
 
-set(CMAKE_SYSTEM_NAME "Generic")
-set(CMAKE_C_COMPILER "arm-vita-eabi-gcc")
+# VitaSDK defines
+if( NOT DEFINED CMAKE_TOOLCHAIN_FILE )
+  if( DEFINED ENV{VITASDK} )
+  set(CMAKE_TOOLCHAIN_FILE "$ENV{VITASDK}/share/vita.toolchain.cmake" CACHE PATH "toolchain file")
+  else()
+  message(FATAL_ERROR "Please define VITASDK to point to your SDK path!")
+  endif()
+endif()
+
+include(${CMAKE_TOOLCHAIN_FILE})
+include("${VITASDK}/share/vita.cmake" REQUIRED)
 
 project(savemgr)
 set(TITLE_ID "SAVEMGR00")
 set(TITLE "Save Manager")
 set(VERSION "2.0.0")
+
+add_subdirectory(extern/vitashell/modules/kernel)
+add_subdirectory(extern/vitashell/modules/user)
 
 execute_process(COMMAND
     python -c "print ('%02d.%02d' % tuple(map(lambda x: int(x), '${VERSION}'.split('.')[:2])))"
