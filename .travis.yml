@@ -30,8 +30,8 @@ before_script:
 script:
     - cppcheck --error-exitcode=1 --enable=style,performance,portability src/*.c
     - mkdir build
-    - cmake --version
-    - cd build && cmake -GNinja .. && ninja
+    - /usr/bin/cmake --version
+    - cd build && /usr/bin/cmake -GNinja .. && ninja
 
 before_deploy:
     - git config --global user.email "builds@travis-ci.com"
