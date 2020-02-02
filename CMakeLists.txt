@@ -45,22 +45,6 @@ add_definitions(-DVERSION=\"${VERSION}\")
 
 set(CMAKE_C_FLAGS "-Wl,-q -Wall -O3 -std=c99")
 
-add_custom_target(vitashell_kernel_module
-    COMMAND ${CMAKE_COMMAND} .
-    COMMAND make
-    COMMAND cp kernel.skprx ${CMAKE_SOURCE_DIR}/sce_sys/kernel.skprx
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/extern/vitashell/modules/kernel)
-
-add_custom_command(OUTPUT ${CMAKE_SOURCE_DIR}/extern/vitashell/modules/user/vitashell_user_stubs/libVitaShellUser_stub_weak.a
-    DEPENDS vitashell_kernel_module
-    COMMAND ${CMAKE_COMMAND} .
-    COMMAND make
-    COMMAND cp user.suprx ${CMAKE_SOURCE_DIR}/sce_sys/user.suprx
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/extern/vitashell/modules/user)
-
-add_custom_target(vitashell_user_lib ALL DEPENDS ${CMAKE_SOURCE_DIR}/extern/vitashell/modules/user/vitashell_user_stubs/libVitaShellUser_stub_weak.a)
-add_custom_target(vitashell_user_module ALL DEPENDS vitashell_user_lib)
-
 include_directories(
     extern/sqlite3
     extern/inih
@@ -104,14 +88,16 @@ target_link_libraries(${PROJECT_NAME}.elf
     -lSceShellSvc_stub
     -lSceRegistryMgr_stub
     -ltaihen_stub
-    ${CMAKE_SOURCE_DIR}/extern/vitashell/modules/user/vitashell_user_stubs/libVitaShellUser_stub_weak.a
+    ${CMAKE_CURRENT_BINARY_DIR}/extern/vitashell/modules/user/libVitaShellUser_stub_weak.a
 
     -ldebugnet
     -lSceNetCtl_stub
     -lSceNet_stub
 )
 
-add_dependencies(${PROJECT_NAME}.elf vitashell_kernel_module vitashell_user_module)
+add_dependencies(${PROJECT_NAME}.elf libVitaShellUser_stub_weak.a)
+add_dependencies(${PROJECT_NAME}.elf kernel.skprx)
+add_dependencies(${PROJECT_NAME}.elf user.suprx)
 
 add_custom_target(${PROJECT_NAME}.vpk ALL
     COMMAND vita-elf-create ${PROJECT_NAME}.elf ${PROJECT_NAME}.velf
@@ -119,8 +105,8 @@ add_custom_target(${PROJECT_NAME}.vpk ALL
     COMMAND vita-mksfoex -s TITLE_ID=${TITLE_ID} -s APP_VER=${APP_VER} "${TITLE}" param.sfo
     COMMAND vita-pack-vpk -s param.sfo -b eboot.bin
             --add ../sce_sys/icon0.png=sce_sys/icon0.png
-            --add ../sce_sys/kernel.skprx=sce_sys/kernel.skprx
-            --add ../sce_sys/user.suprx=sce_sys/user.suprx
+            --add ${CMAKE_CURRENT_BINARY_DIR}/extern/vitashell/modules/kernel/kernel.skprx=sce_sys/kernel.skprx
+            --add ${CMAKE_CURRENT_BINARY_DIR}/extern/vitashell/modules/user/user.suprx=sce_sys/user.suprx
             --add ../sce_sys/livearea/contents/bg.png=sce_sys/livearea/contents/bg.png
             --add ../sce_sys/livearea/contents/startup.png=sce_sys/livearea/contents/startup.png
             --add ../sce_sys/livearea/contents/template.xml=sce_sys/livearea/contents/template.xml
