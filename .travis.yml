@@ -6,7 +6,7 @@ addons:
         packages:
             - cppcheck
             - patch
-            - ninja-build
+            - make
 
 branches:
       except:
@@ -24,7 +24,7 @@ script:
     - cppcheck --error-exitcode=1 --enable=style,performance,portability src/*.c
     - mkdir build
     - cmake --version
-    - cd build && cmake -GNinja .. && ninja
+    - cd build && cmake -G 'Unix Makefiles' .. && make
 
 before_deploy:
     - git config --global user.email "builds@travis-ci.com"
