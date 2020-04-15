@@ -101,7 +101,7 @@ add_dependencies(${PROJECT_NAME}.elf user.suprx)
 
 vita_create_self(eboot.bin ${PROJECT_NAME}.elf UNSAFE)
 vita_create_vpk(${PROJECT_NAME}.vpk ${TITLE_ID} eboot.bin
-  VERSION ${VERSION}
+  VERSION ${APP_VER}
   NAME ${TITLE}
   FILE ${CMAKE_SOURCE_DIR}/sce_sys/icon0.png sce_sys/icon0.png
        ${CMAKE_CURRENT_BINARY_DIR}/extern/vitashell/modules/kernel/kernel.skprx sce_sys/kernel.skprx
